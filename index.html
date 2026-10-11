@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brawl Survival 2D - Ultimate Multiplayer</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html {
@@ -120,22 +121,23 @@
         }
         #ingame-menu-btn:active { transform: scale(0.92); }
 
+        /* TÜM MENÜLER EKRANA SIĞMAZSA AŞAĞI KAYDIRILABİLİR (OVERFLOW-Y: AUTO) */
         .ui-panel {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(18, 24, 36, 0.98); display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            color: white; z-index: 1000; font-family: Arial, sans-serif; padding: 20px; text-align: center;
+            flex-direction: column; justify-content: flex-start; align-items: center;
+            color: white; z-index: 1000; font-family: Arial, sans-serif; padding: 25px 15px; text-align: center;
             pointer-events: auto !important;
-            overflow-y: auto;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-        .ui-panel h1 { font-size: 26px; color: #00d2d3; margin-bottom: 8px; }
+        .ui-panel h1 { font-size: 26px; color: #00d2d3; margin: 10px 0 6px 0; }
         .ui-panel p { font-size: 13px; margin-bottom: 12px; color: #dcdde1; }
 
         .menu-btn {
             background: #00d2d3; border: none; padding: 12px 20px; margin: 6px;
             color: #121824; font-size: 14px; font-weight: bold; border-radius: 8px;
             cursor: pointer; width: 250px; z-index: 1001; pointer-events: auto !important;
-            touch-action: manipulation;
+            touch-action: manipulation; flex-shrink: 0;
         }
         .menu-btn:active { transform: scale(0.95); }
         .menu-btn.sec { background: #576574; color: white; }
@@ -153,7 +155,7 @@
         .room-input {
             padding: 10px; font-size: 16px; border-radius: 6px; border: 2px solid #00d2d3;
             background: rgba(0,0,0,0.5); color: white; text-align: center; margin-bottom: 8px; width: 220px;
-            pointer-events: auto !important; z-index: 1001;
+            pointer-events: auto !important; z-index: 1001; flex-shrink: 0;
         }
 
         .color-picker-container {
@@ -173,7 +175,7 @@
             width: 100%; max-width: 360px; background: rgba(0,0,0,0.6);
             border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2);
             overflow: hidden; min-height: 140px; display: flex; flex-direction: column; justify-content: flex-start;
-            pointer-events: auto !important; max-height: 220px; overflow-y: auto;
+            pointer-events: auto !important; max-height: 220px; overflow-y: auto; flex-shrink: 0;
         }
         .leaderboard-row {
             display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
@@ -249,7 +251,7 @@
         
         <button class="menu-btn rotate" style="background:#f39c12; color:white;" onclick="toggleFullScreen()">📱 TAM EKRAN (TELEFON UYUMLU)</button>
         <button class="menu-btn rotate" onclick="enableLandscape()">🔄 YATAY ÇEVİR</button>
-        <button class="menu-btn auth" onclick="showAuthMenu()">🔑 HESAP GİRİŞİ / KAYIT</button>
+        <button class="menu-btn auth" id="btn-auth" onclick="showAuthMenu()">🔑 HESAP GİRİŞİ / KAYIT</button>
         <button class="menu-btn" id="btn-play" onclick="initAudioAndShowModes()">🎮 TEKLİ OYNA (MOD SEÇ)</button>
         <button class="menu-btn server" id="btn-host-join" onclick="initAudioAndShowHostJoin()">🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)</button>
         <button class="menu-btn server" id="btn-public-servers" style="background:#2980b9;" onclick="initAudioAndShowServers()">🌍 GENEL SUNUCULAR (CANLI LİSTE)</button>
@@ -261,13 +263,15 @@
         <button class="menu-btn lang" id="btn-lang" onclick="showLanguageMenu()">🌐 DİL / LANGUAGE</button>
     </div>
 
-    <!-- HESAP GİRİŞ / KAYIT MENÜSÜ -->
+    <!-- YENİ HESAP GİRİŞ / ŞİFRE SİSTEMİ -->
     <div id="auth-menu" class="ui-panel" style="display: none;">
-        <h1>🔑 OYUNCU HESABI</h1>
-        <p>Çıkıp girdiğinde kaldığın yerden devam etmek için hesap adını gir!</p>
-        <input type="text" id="auth-username-input" class="room-input" placeholder="Hesap Adı (Örn: Arda)..." maxlength="12">
-        <button class="menu-btn" onclick="loginOrRegisterAccount()">GİRİŞ YAP / HESABI YÜKLE</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <h1 id="auth-title">🔑 HESAP GİRİŞİ / KAYIT</h1>
+        <p id="auth-desc">Kullanıcı adı ve şifrenle giriş yap veya yeni hesap oluştur!</p>
+        <input type="text" id="auth-username-input" class="room-input" placeholder="Kullanıcı Adı..." maxlength="12">
+        <input type="password" id="auth-password-input" class="room-input" placeholder="Şifre..." maxlength="20">
+        <button class="menu-btn auth" id="auth-btn-login" onclick="loginAccount()">GİRİŞ YAP</button>
+        <button class="menu-btn mode" id="auth-btn-register" onclick="registerAccount()">YENİ HESAP OLUŞTUR</button>
+        <button class="menu-btn sec" id="auth-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <!-- DİL SEÇİM MENÜSÜ -->
@@ -288,57 +292,57 @@
         <p id="txt-hostjoin-desc">Oda kurarak arkadaşını davet et ya da kodla katıl!</p>
         
         <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 280px;">
-            <p style="color: #f1c40f; font-weight: bold; margin-bottom: 5px;">🏠 ODA KUR (HOST OL)</p>
-            <input type="text" id="host-room-code-input" class="room-input" placeholder="Kendi Oda Kodunu Yaz..." maxlength="15">
-            <button class="menu-btn server" style="width: 100%; margin: 0;" onclick="hostCustomRoomCode()">ODA KUR & OYNA</button>
+            <p id="txt-host-title" style="color: #f1c40f; font-weight: bold; margin-bottom: 5px;">🏠 ODA KUR (HOST OL)</p>
+            <input type="text" id="host-room-code-input" class="room-input" placeholder="Oda Kodunu Yaz..." maxlength="15">
+            <button class="menu-btn server" id="btn-host-action" style="width: 100%; margin: 0;" onclick="hostCustomRoomCode()">ODA KUR & OYNA</button>
         </div>
 
         <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 15px; width: 280px;">
-            <p style="color: #3498db; font-weight: bold; margin-bottom: 5px;">🔗 ODAYA KATIL</p>
+            <p id="txt-join-title" style="color: #3498db; font-weight: bold; margin-bottom: 5px;">🔗 ODAYA KATIL</p>
             <input type="text" id="join-room-code-input" class="room-input" placeholder="Arkadaşın Kodunu Yaz..." maxlength="15">
-            <button class="menu-btn mode" style="width: 100%; margin: 0;" onclick="joinCustomRoomCode()">ODAYA BAĞLAN</button>
+            <button class="menu-btn mode" id="btn-join-action" style="width: 100%; margin: 0;" onclick="joinCustomRoomCode()">ODAYA BAĞLAN</button>
         </div>
 
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <button class="menu-btn sec" id="host-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <!-- GENEL SUNUCU MENÜSÜ (CANLI OYUNCU LİSTESİ) -->
     <div id="public-servers-menu" class="ui-panel" style="display: none;">
-        <h1>🌍 CANLI GENEL SUNUCULAR</h1>
-        <p>Aşağıda oyuncular tarafından açılmış canlı odaları görebilirsin. İstersen sen de yeni bir sunucu kur!</p>
-        <button class="menu-btn server" onclick="showCreateServerDialog()">➕ YENİ SUNUCU KUR</button>
-        <button class="menu-btn sec" style="background:#3498db; width: 180px; padding: 8px; margin-bottom: 10px;" onclick="refreshServerList()">🔄 LİSTEYİ YENİLE</button>
-        <div style="font-weight:bold; color:#f1c40f; margin: 5px 0 5px 0;">--- AÇIK CANLI SUNUCULAR ---</div>
+        <h1 id="server-title">🌍 CANLI GENEL SUNUCULAR</h1>
+        <p id="server-desc">Aşağıda oyuncular tarafından açılmış canlı odaları görebilirsin. İstersen sen de yeni bir sunucu kur!</p>
+        <button class="menu-btn server" id="server-btn-create" onclick="showCreateServerDialog()">➕ YENİ SUNUCU KUR</button>
+        <button class="menu-btn sec" id="server-btn-refresh" style="background:#3498db; width: 180px; padding: 8px; margin-bottom: 10px;" onclick="refreshServerList()">🔄 LİSTEYİ YENİLE</button>
+        <div id="server-list-header" style="font-weight:bold; color:#f1c40f; margin: 5px 0 5px 0;">--- AÇIK CANLI SUNUCULAR ---</div>
         <div class="leaderboard-table" id="server-list-container">
-            <!-- Gerçek oda kurulduğunda buraya eklenecek -->
+            <!-- Node.js sunucusundan gelen odalar buraya yüklenecek -->
         </div>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <button class="menu-btn sec" id="server-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <!-- SKİN MAĞAZASI -->
     <div id="shop-menu" class="ui-panel" style="display: none;">
-        <h1>🛒 SKİN MAĞAZASI ($)</h1>
+        <h1 id="shop-title">🛒 SKİN MAĞAZASI ($)</h1>
         <p id="shop-money-text">Doların: 💵 $50</p>
-        <div style="font-weight:bold; color:#2ecc71; margin: 10px 0 5px 0;">--- ÖZEL SKİNLER ---</div>
+        <div id="shop-sub-title" style="font-weight:bold; color:#2ecc71; margin: 10px 0 5px 0;">--- ÖZEL SKİNLER ---</div>
         <button class="menu-btn shop" onclick="buySkin('Cyberpunk', '#ff007f', 150)">🤖 Cyberpunk (Pembe Neon) - $150</button>
         <button class="menu-btn shop" onclick="buySkin('Altın Kral', '#ffd700', 300)">👑 Altın Kral (Parıl Parıl) - $300</button>
         <button class="menu-btn shop" onclick="buySkin('Gölge Ninja', '#2f3640', 250)">🥷 Gölge Ninja (Koyu) - $250</button>
         <button class="menu-btn shop" onclick="buySkin('Cehennem Alevi', '#ff4500', 200)">🔥 Cehennem Alevi - $200</button>
-        <button class="menu-btn sec" style="margin-top: 20px;" onclick="closeShopMenu()">MENÜYE DÖN</button>
+        <button class="menu-btn sec" id="shop-btn-back" style="margin-top: 20px;" onclick="closeShopMenu()">MENÜYE DÖN</button>
     </div>
 
     <div id="map-menu" class="ui-panel" style="display: none;">
-        <h1>🗺️ HARİTA TEMASI SEÇ</h1>
-        <p>Savaşacağın arenanın atmosferini belirle!</p>
+        <h1 id="map-title">🗺️ HARİTA TEMASI SEÇ</h1>
+        <p id="map-desc">Savaşacağın arenanın atmosferini belirle!</p>
         <button class="menu-btn mode" style="background:#27ae60;" onclick="selectMap('cim')">🌿 Çimlik Vadi (Klasik Yeşil)</button>
         <button class="menu-btn mode" style="background:#d35400;" onclick="selectMap('col')">🏜️ Kızıl Çöl (Sıcak Kumlar)</button>
         <button class="menu-btn mode" style="background:#2980b9;" onclick="selectMap('buz')">🧊 Buzul Diyarı (Buz Rengi)</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <button class="menu-btn sec" id="map-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <div id="character-menu" class="ui-panel" style="display: none;">
-        <h1>🎨 KLASİK RENK SEÇİMİ</h1>
-        <p>Standart karakter rengini seç!</p>
+        <h1 id="char-title">🎨 KLASİK RENK SEÇİMİ</h1>
+        <p id="char-desc">Standart karakter rengini seç!</p>
         <div class="color-picker-container">
             <div class="color-box selected" style="background: #00d2d3;" onclick="selectColor('#00d2d3', this)"></div>
             <div class="color-box" style="background: #e74c3c;" onclick="selectColor('#e74c3c', this)"></div>
@@ -347,7 +351,7 @@
             <div class="color-box" style="background: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
             <div class="color-box" style="background: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
         </div>
-        <button class="menu-btn" onclick="showMainMenu()">KAYDET & DÖN</button>
+        <button class="menu-btn" id="char-btn-back" onclick="showMainMenu()">KAYDET & DÖN</button>
     </div>
 
     <div id="profile-menu" class="ui-panel" style="display: none;">
@@ -355,21 +359,21 @@
         <p id="prof-desc">İsmini ve Klanını belirle!</p>
         <input type="text" id="player-name-input" class="room-input" placeholder="Oyuncu İsmi..." maxlength="12">
         <input type="text" id="clan-name-input" class="room-input" placeholder="Klan İsmi..." maxlength="6">
-        <button class="menu-btn" onclick="savePlayerProfile()">KAYDET & DÖN</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <button class="menu-btn" id="prof-btn-save" onclick="savePlayerProfile()">KAYDET & DÖN</button>
+        <button class="menu-btn sec" id="prof-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <div id="mode-menu" class="ui-panel" style="display: none;">
-        <h1>🎮 OYUN MODU SEÇ</h1>
-        <button class="menu-btn mode" onclick="startSelectedGameMode('Zombilere Karsi')">🧟 ZOMBİLERE KARŞI İNSANLAR</button>
-        <button class="menu-btn mode" style="background:#e74c3c;" onclick="startSelectedGameMode('PvP')">⚔️ İNSANLAR VS İNSANLAR (PVP)</button>
-        <button class="menu-btn mode" style="background:#27ae60;" onclick="startSelectedGameMode('Boss')">👑 BOSSLAR VS İNSANLAR</button>
-        <button class="menu-btn mode" style="background:#8e44ad;" onclick="startSelectedGameMode('Enfeksiyon')">☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <h1 id="mode-title">🎮 OYUN MODU SEÇ</h1>
+        <button class="menu-btn mode" id="mode-btn-zombie" onclick="startSelectedGameMode('Zombilere Karsi')">🧟 ZOMBİLERE KARŞI İNSANLAR</button>
+        <button class="menu-btn mode" id="mode-btn-pvp" style="background:#e74c3c;" onclick="startSelectedGameMode('PvP')">⚔️ İNSANLAR VS İNSANLAR (PVP)</button>
+        <button class="menu-btn mode" id="mode-btn-boss" style="background:#27ae60;" onclick="startSelectedGameMode('Boss')">👑 BOSSLAR VS İNSANLAR</button>
+        <button class="menu-btn mode" id="mode-btn-inf" style="background:#8e44ad;" onclick="startSelectedGameMode('Enfeksiyon')">☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)</button>
+        <button class="menu-btn sec" id="mode-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <div id="leaderboard-menu" class="ui-panel" style="display: none;">
-        <h1>🏆 LİDERLİK TABLOSU</h1>
+        <h1 id="lb-title">🏆 LİDERLİK TABLOSU</h1>
         <div class="tab-container">
             <button class="tab-btn active" onclick="setLeaderboardMode('Zombilere Karsi', this)">Zombiler</button>
             <button class="tab-btn" onclick="setLeaderboardMode('PvP', this)">PvP</button>
@@ -381,7 +385,7 @@
             <button class="tab-btn" id="tab-weekly" onclick="setLeaderboardPeriod('weekly')">Bu Hafta</button>
         </div>
         <div class="leaderboard-table" id="leaderboard-content"></div>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+        <button class="menu-btn sec" id="lb-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
     <div id="downed-screen" class="ui-panel" style="display: none; background: rgba(192, 57, 43, 0.9);">
@@ -394,9 +398,9 @@
         <h1 id="game-over-title" style="color: #ff4757;">OYUN BİTTİ!</h1>
         <p id="final-score">Skorun: 0</p>
         <button id="revive-btn" class="menu-btn ad" onclick="watchAdToRevive()">📺 REKLAM İZLE & CANLAN (<span id="ad-count">3</span>/3)</button>
-        <button class="menu-btn rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
-        <button class="menu-btn" onclick="showModeSelect()">🔄 Yeniden Başla</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">🏠 Ana Menü</button>
+        <button class="menu-btn rank" id="go-btn-rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn" id="go-btn-restart" onclick="showModeSelect()">🔄 Yeniden Başla</button>
+        <button class="menu-btn sec" id="go-btn-menu" onclick="showMainMenu()">🏠 Ana Menü</button>
     </div>
 
     <div id="ad-screen">
@@ -425,7 +429,23 @@
         let isGodMode = false;
         let isChatOpen = false;
         let isZombified = false;
-        let currentLang = 'tr';
+        let currentLang = localStorage.getItem("brawl_lang") || 'tr';
+
+        const SOCKET_SERVER_URL = "https://your-node-server.onrender.com"; 
+        let socket = null;
+        try {
+            socket = io(SOCKET_SERVER_URL, { transports: ['websocket', 'polling'] });
+        } catch(e) {
+            console.log("Socket.io bağlantı hatası veya yerel mod.");
+        }
+
+        let liveServerRooms = [];
+        if (socket) {
+            socket.on('update-servers', (rooms) => {
+                liveServerRooms = rooms;
+                updateServerListUI();
+            });
+        }
 
         function saveGameData() {
             localStorage.setItem("brawl_playerName", playerName);
@@ -434,26 +454,110 @@
             localStorage.setItem("brawl_money", player.money);
         }
 
+        // --- YENİ HESAP GİRİŞ / ŞİFRE FONKSİYONLARI ---
+        function registerAccount() {
+            let user = document.getElementById("auth-username-input").value.trim();
+            let pass = document.getElementById("auth-password-input").value.trim();
+            if (!user || !pass) {
+                alert("Lütfen kullanıcı adı ve şifre yaz!");
+                return;
+            }
+            let accounts = JSON.parse(localStorage.getItem("brawl_accounts") || "{}");
+            if (accounts[user]) {
+                alert("Bu kullanıcı adı zaten alınmış! Giriş yapmayı dene.");
+                return;
+            }
+            accounts[user] = { password: pass, money: 50, skin: "Varsayılan", color: "#00d2d3" };
+            localStorage.setItem("brawl_accounts", JSON.stringify(accounts));
+            
+            playerName = user;
+            savedMoney = 50;
+            player.money = 50;
+            playerColor = "#00d2d3";
+            saveGameData();
+            alert(`Hesap başarıyla oluşturuldu ve giriş yapıldı! Hoş geldin, ${user}`);
+            showMainMenu();
+        }
+
+        function loginAccount() {
+            let user = document.getElementById("auth-username-input").value.trim();
+            let pass = document.getElementById("auth-password-input").value.trim();
+            if (!user || !pass) {
+                alert("Lütfen kullanıcı adı ve şifre yaz!");
+                return;
+            }
+            let accounts = JSON.parse(localStorage.getItem("brawl_accounts") || "{}");
+            if (!accounts[user]) {
+                alert("Böyle bir hesap bulunamadı! Önce 'Yeni Hesap Oluştur' butonuna bas.");
+                return;
+            }
+            if (accounts[user].password !== pass) {
+                alert("Şifre hatalı!");
+                return;
+            }
+            playerName = user;
+            savedMoney = accounts[user].money || 50;
+            player.money = savedMoney;
+            playerColor = accounts[user].color || "#00d2d3";
+            saveGameData();
+            alert(`Giriş başarılı! Tekrar hoş geldin, ${user}`);
+            showMainMenu();
+        }
+
         const translations = {
             tr: { 
                 title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Sürüm", 
                 play: "🎮 TEKLİ OYNA (MOD SEÇ)", hostJoin: "🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)", 
-                publicServers: "🌍 GENEL SUNUCU KUR / KATIL", shop: "🛒 SKİN MAĞAZASI", map: "🗺️ HARİTA SEÇİ", 
-                char: "🎨 RENK SEÇİMİ", profile: "👤 PROFİL", rank: "🏆 LİDERLİK TABLOSU", lang: "🌐 DİL / LANGUAGE" 
+                publicServers: "🌍 GENEL SUNUCULAR (CANLI LİSTE)", shop: "🛒 SKİN MAĞAZASI ($)", map: "🗺️ HARİTA SEÇİ", 
+                char: "🎨 RENK SEÇİMİ", profile: "👤 PROFİL", rank: "🏆 LİDERLİK TABLOSU", lang: "🌐 DİL / LANGUAGE", auth: "🔑 HESAP GİRİŞİ / KAYIT",
+                back: "GERİ", saveBack: "KAYDET & DÖN", hostTitle: "🏠 ODA KUR (HOST OL)", joinTitle: "🔗 ODAYA KATIL", hostBtn: "ODA KUR & OYNA", joinBtn: "ODAYA BAĞLAN",
+                serverTitle: "🌍 CANLI GENEL SUNUCULAR", serverDesc: "Aşağıda oyuncular tarafından açılmış canlı odaları görebilirsin. İstersen sen de yeni bir sunucu kur!",
+                createServerBtn: "➕ YENİ SUNUCU KUR", refreshBtn: "🔄 LİSTEYİ YENİLE", serverListHead: "--- AÇIK CANLI SUNUCULAR ---",
+                modeZombie: "🧟 ZOMBİLERE KARŞI İNSANLAR", modePvP: "⚔️ İNSANLAR VS İNSANLAR (PVP)", modeBoss: "👑 BOSSLAR VS İNSANLAR", modeInf: "☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)"
             },
             en: { 
                 title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Edition", 
                 play: "🎮 SINGLEPLAYER (SELECT MODE)", hostJoin: "🌐 PLAY WITH FRIENDS (HOST / JOIN)", 
-                publicServers: "🌍 PUBLIC SERVERS", shop: "🛒 SKIN SHOP", map: "🗺️ MAP SELECTION", 
-                char: "🎨 COLOR SELECTION", profile: "👤 PROFILE", rank: "🏆 LEADERBOARD", lang: "🌐 LANGUAGE" 
+                publicServers: "🌍 PUBLIC SERVERS (LIVE LIST)", shop: "🛒 SKIN SHOP ($)", map: "🗺️ MAP SELECTION", 
+                char: "🎨 COLOR SELECTION", profile: "👤 PROFILE", rank: "🏆 LEADERBOARD", lang: "🌐 LANGUAGE", auth: "🔑 ACCOUNT LOGIN / REGISTER",
+                back: "BACK", saveBack: "SAVE & RETURN", hostTitle: "🏠 HOST ROOM", joinTitle: "🔗 JOIN ROOM", hostBtn: "HOST & PLAY", joinBtn: "CONNECT TO ROOM",
+                serverTitle: "🌍 LIVE PUBLIC SERVERS", serverDesc: "You can see active live rooms below or host your own server!",
+                createServerBtn: "➕ HOST NEW SERVER", refreshBtn: "🔄 REFRESH LIST", serverListHead: "--- ACTIVE PUBLIC SERVERS ---",
+                modeZombie: "🧟 SURVIVE AGAINST ZOMBIES", modePvP: "⚔️ HUMANS VS HUMANS (PVP)", modeBoss: "👑 BOSSES VS HUMANS", modeInf: "☣️ ZOMBIE INFECTION MODE"
+            },
+            es: {
+                title: "BRAWL SURVIVAL 2D", subtitle: "Edición Multijugador Definitiva",
+                play: "🎮 UN JUGADOR", hostJoin: "🌐 JUGAR CON AMIGOS", publicServers: "🌐 SERVIDORES PÚBLICOS",
+                shop: "🛒 TIENDA", map: "🗺️ MAPA", char: "🎨 COLOR", profile: "👤 PERFIL", rank: "🏆 CLASIFICACIÓN", lang: "🌐 IDIOMA", auth: "🔑 CUENTA",
+                back: "VOLVER", saveBack: "GUARDAR", hostTitle: "🏠 CREAR SALA", joinTitle: "🔗 UNIRSE A SALA", hostBtn: "CREAR Y JUGAR", joinBtn: "CONECTAR",
+                serverTitle: "🌍 SERVIDORES PÚBLICOS", serverDesc: "¡Salas activas abajo!", createServerBtn: "➕ CREAR SERVIDOR", refreshBtn: "🔄 ACTUALIZAR", serverListHead: "--- SERVIDORES ---",
+                modeZombie: "🧟 SOBREVIVE A ZOMBIS", modePvP: "⚔️ PVP", modeBoss: "👑 JEFES", modeInf: "☣️ INFECCIÓN"
+            },
+            de: {
+                title: "BRAWL SURVIVAL 2D", subtitle: "Ultimative Multiplayer Edition",
+                play: "🎮 EINZELSPIELER", hostJoin: "🌐 MIT FREUNDEN SPIELEN", publicServers: "🌍 ÖFFENTLICHE SERVER",
+                shop: "🛒 SHOP", map: "🗺️ KARTE", char: "🎨 FARBE", profile: "👤 PROFIL", rank: "🏆 RANGLISTE", lang: "🌐 SPRACHE", auth: "🔑 KONTO",
+                back: "ZURÜCK", saveBack: "SPEICHERN", hostTitle: "🏠 RAUM ERSTELLEN", joinTitle: "🔗 BEITRETEN", hostBtn: "ERSTELLEN & SPIELEN", joinBtn: "VERBINDEN",
+                serverTitle: "🌍 ÖFFENTLICHE SERVER", serverDesc: "Aktive Räume unten!", createServerBtn: "➕ SERVER ERSTELLEN", refreshBtn: "🔄 AKTUALISIEREN", serverListHead: "--- SERVER ---",
+                modeZombie: "🧟 ZOMBIE MODUS", modePvP: "⚔️ PVP", modeBoss: "👑 BOSS MODUS", modeInf: "☣️ INFEKTION"
+            },
+            fr: {
+                title: "BRAWL SURVIVAL 2D", subtitle: "Édition Multijoueur Ultime",
+                play: "🎮 SOLO", hostJoin: "🌐 JOUER AVEC DES AMIS", publicServers: "🌍 SERVEURS PUBLICS",
+                shop: "🛒 BOUTIQUE", map: "🗺️ CARTE", char: "🎨 COULEUR", profile: "👤 PROFIL", rank: "🏆 CLASSEMENT", lang: "🌐 LANGUE", auth: "🔑 COMPTE",
+                back: "RETOUR", saveBack: "SAUVEGARDER", hostTitle: "🏠 CRÉER UN SALON", joinTitle: "🔗 REJOINDRE", hostBtn: "CRÉER & JOUER", joinBtn: "SE CONNECTER",
+                serverTitle: "🌍 SERVEURS PUBLICS", serverDesc: "Salons actifs ci-dessous !", createServerBtn: "➕ CRÉER SERVEUR", refreshBtn: "🔄 ACTUALISER", serverListHead: "--- SERVEURS ---",
+                modeZombie: "🧟 SURVIE ZOMBIE", modePvP: "⚔️ PVP", modeBoss: "👑 BOSS", modeInf: "☣️ INFECTION"
             }
         };
 
         function setLanguage(lang) {
             currentLang = lang;
+            localStorage.setItem("brawl_lang", lang);
             let t = translations[lang] || translations['tr'];
             document.getElementById("txt-title").innerText = t.title;
             document.getElementById("txt-subtitle").innerText = t.subtitle;
+            document.getElementById("btn-auth").innerText = t.auth;
             document.getElementById("btn-play").innerText = t.play;
             document.getElementById("btn-host-join").innerText = t.hostJoin;
             document.getElementById("btn-public-servers").innerText = t.publicServers;
@@ -463,6 +567,51 @@
             document.getElementById("btn-profile").innerText = t.profile;
             document.getElementById("btn-rank").innerText = t.rank;
             document.getElementById("btn-lang").innerText = t.lang;
+
+            document.getElementById("auth-title").innerText = t.auth;
+            document.getElementById("auth-btn-back").innerText = t.back;
+
+            document.getElementById("txt-hostjoin").innerText = t.hostJoin;
+            document.getElementById("txt-host-title").innerText = t.hostTitle;
+            document.getElementById("btn-host-action").innerText = t.hostBtn;
+            document.getElementById("txt-join-title").innerText = t.joinTitle;
+            document.getElementById("btn-join-action").innerText = t.joinBtn;
+            document.getElementById("host-btn-back").innerText = t.back;
+
+            document.getElementById("server-title").innerText = t.serverTitle;
+            document.getElementById("server-desc").innerText = t.serverDesc;
+            document.getElementById("server-btn-create").innerText = t.createServerBtn;
+            document.getElementById("server-btn-refresh").innerText = t.refreshBtn;
+            document.getElementById("server-list-header").innerText = t.serverListHead;
+            document.getElementById("server-btn-back").innerText = t.back;
+
+            document.getElementById("shop-title").innerText = t.shop;
+            document.getElementById("shop-btn-back").innerText = t.back;
+
+            document.getElementById("map-title").innerText = t.map;
+            document.getElementById("map-btn-back").innerText = t.back;
+
+            document.getElementById("char-title").innerText = t.char;
+            document.getElementById("char-btn-back").innerText = t.saveBack;
+
+            document.getElementById("prof-title").innerText = t.profile;
+            document.getElementById("prof-btn-save").innerText = t.saveBack;
+            document.getElementById("prof-btn-back").innerText = t.back;
+
+            document.getElementById("mode-title").innerText = t.play;
+            document.getElementById("mode-btn-zombie").innerText = t.modeZombie;
+            document.getElementById("mode-btn-pvp").innerText = t.modePvP;
+            document.getElementById("mode-btn-boss").innerText = t.modeBoss;
+            document.getElementById("mode-btn-inf").innerText = t.modeInf;
+            document.getElementById("mode-btn-back").innerText = t.back;
+
+            document.getElementById("lb-title").innerText = t.rank;
+            document.getElementById("lb-btn-back").innerText = t.back;
+
+            document.getElementById("go-btn-rank").innerText = t.rank;
+            document.getElementById("go-btn-restart").innerText = t.play;
+            document.getElementById("go-btn-menu").innerText = t.back;
+
             showMainMenu();
         }
 
@@ -475,22 +624,8 @@
             document.getElementById("main-menu").style.display = "none";
             document.getElementById("auth-menu").style.display = "flex";
             document.getElementById("auth-username-input").value = playerName;
+            document.getElementById("auth-password-input").value = "";
         }
-
-        function loginOrRegisterAccount() {
-            let val = document.getElementById("auth-username-input").value.trim();
-            if (val) {
-                playerName = val;
-                saveGameData();
-                alert(`Hesap yüklendi/açıldı! Hoş geldin, ${playerName}`);
-                showMainMenu();
-            } else {
-                alert("Lütfen geçerli bir hesap adı yaz!");
-            }
-        }
-
-        // GERÇEK OYUNCU SUNUCULARI LİSTESİ (Sadece insanlar açtığında dolar)
-        let activeHostedRooms = [];
 
         let peer = null, conn = null, myPeerId = null;
         let isHost = false;
@@ -556,11 +691,11 @@
 
         function updateServerListUI() {
             let container = document.getElementById("server-list-container");
-            if (activeHostedRooms.length === 0) {
+            if (liveServerRooms.length === 0) {
                 container.innerHTML = `<div class="leaderboard-row" style="color: #aaa; text-align: center; justify-content: center; padding: 15px;">Şu an açık canlı sunucu yok. İlk sunucuyu sen kur!</div>`;
             } else {
                 let html = "";
-                activeHostedRooms.forEach(room => {
+                liveServerRooms.forEach(room => {
                     html += `<div class="leaderboard-row">
                         <span>🎮 ${room.name} (${room.mode})</span>
                         <button class="menu-btn server" style="width:90px; padding:6px; margin:0; font-size:11px;" onclick="connectToLiveServer('${room.id}', '${room.mode}')">KATIL</button>
@@ -587,8 +722,8 @@
             peer.on('open', (id) => {
                 myPeerId = id;
                 let roomObj = { id: id, name: `${playerName}'in Odası`, mode: selected };
-                activeHostedRooms.push(roomObj);
-                alert(`🌐 Sunucu Başarıyla Açıldı! Mod: ${selected}. Diğer oyuncular listede senin odanı görebilir.`);
+                if (socket) socket.emit('create-room', roomObj);
+                alert(`🌐 Sunucu Başarıyla Açıldı! Mod: ${selected}.`);
                 startGame(selected);
             });
 
@@ -648,9 +783,9 @@
                     if (d.bulletFired) {
                         bullets.push(d.bulletFired);
                     }
-                    if (d.hitPlayer && selectedMode === "PvP") {
-                        player.health -= d.damage || 5;
-                        if (player.health <= 0) triggerDowned();
+                    if (d.hitPlayer) {
+                        friendPlayer.health -= d.damage || 5;
+                        if (friendPlayer.health <= 0) friendPlayer.isDowned = true;
                         updateUI();
                     }
                     if (d.reviveRequest && friendPlayer.isDowned) {
@@ -659,7 +794,7 @@
                 } else {
                     if (d.enemies) enemies = d.enemies;
                     if (d.currentWave) currentWave = d.currentWave;
-                    if (d.hitPlayer && selectedMode === "PvP") {
+                    if (d.hitPlayer) {
                         player.health -= d.damage || 5;
                         if (player.health <= 0) triggerDowned();
                         updateUI();
@@ -681,6 +816,8 @@
             peer = new Peer(fullCode);
             peer.on('open', (id) => {
                 myPeerId = id;
+                let roomObj = { id: id, name: `${playerName}'in Özel Odası`, mode: "Zombilere Karsi" };
+                if (socket) socket.emit('create-room', roomObj);
                 alert(`Oda kuruldu! Kod: ${code}`);
                 showModeSelect();
             });
@@ -1271,11 +1408,11 @@
                 let damage = player.weapon === "Katana" ? 6.0 : 3.5;
                 let kx = player.x + Math.cos(player.angle)*reach, ky = player.y + Math.sin(player.angle)*reach;
                 
-                if (friendPlayer.active) {
+                if (friendPlayer.active && !friendPlayer.isDowned) {
                     if (Math.hypot(kx - friendPlayer.x, ky - friendPlayer.y) < friendPlayer.radius + 20) {
                         playSound('hit');
                         if (isMultiplayer && conn && conn.open) {
-                            conn.send({ hitPlayer: true, damage: damage * 10 });
+                            conn.send({ hitPlayer: true, damage: damage * 8 });
                         }
                     }
                 }
@@ -1544,7 +1681,7 @@
                 let b = bullets[i]; b.x += b.vx; b.y += b.vy;
                 if (b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) { bullets.splice(i, 1); continue; }
                 
-                if (friendPlayer.active) {
+                if (friendPlayer.active && !friendPlayer.isDowned) {
                     if (Math.hypot(b.x - friendPlayer.x, b.y - friendPlayer.y) < friendPlayer.radius + b.radius) {
                         bullets.splice(i, 1);
                         playSound('hit');
@@ -1753,6 +1890,8 @@
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
+
+        if (currentLang !== 'tr') setLanguage(currentLang);
     </script>
 </body>
 </html>
