@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brawl Survival 2D - Ultimate Multiplayer</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100vw; height: 100vh;
+            overflow: hidden; background-color: #121824;
+            font-family: Arial, sans-serif; user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: block; z-index: 1; }
+        
+        #hud {
+            position: absolute; top: 10px; left: 10px;
+            color: white; font-weight: bold; font-size: 11px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none; display: flex; gap: 5px; z-index: 10; flex-wrap: wrap;
+        }
+        .stat-badge {
+            background: rgba(0, 0, 0, 0.7); padding: 5px 8px;
+            border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #team-toggle-btn {
+            position: absolute; top: 10px; right: 280px;
+            background: rgba(46, 204, 113, 0.85); border: 2px solid white;
+            color: white; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #team-toggle-btn:active { transform: scale(0.92); }
+        #team-toggle-btn.teamed { background: rgba(231, 76, 60, 0.85); }
+
+        #shop-toggle-btn {
+            position: absolute; top: 10px; right: 185px;
+            background: rgba(46, 204, 113, 0.9); border: 2px solid white;
+            color: #ffffff; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #shop-toggle-btn:active { transform: scale(0.92); }
+
+        #chat-toggle-btn {
+            position: absolute; top: 10px; right: 90px;
+            background: rgba(52, 152, 219, 0.9); border: 2px solid white;
+            color: white; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #chat-toggle-btn:active { transform: scale(0.92); }
+
+        #out-warning, #reload-warning, #wave-announcement {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            color: white; padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 16px;
+            border: 2px solid #ffffff; display: none; z-index: 30; text-align: center;
+            pointer-events: none;
+        }
+        #out-warning { top: 70px; background: rgba(231, 76, 60, 0.9); box-shadow: 0 0 15px rgba(231, 76, 60, 0.8); }
+        #reload-warning { top: 130px; background: rgba(241, 196, 15, 0.9); color: #121824; }
+        #wave-announcement { top: 180px; background: rgba(155, 89, 182, 0.95); font-size: 20px; box-shadow: 0 0 20px rgba(155, 89, 182, 0.8); }
+
+        #chat-container {
+            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            width: 340px; height: 160px;
+            background: rgba(0, 0, 0, 0.9); border: 2px solid #3498db;
+            border-radius: 10px; display: none; flex-direction: column; z-index: 150; padding: 8px;
+            pointer-events: auto !important; box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+        }
+        #chat-messages {
+            flex: 1; overflow-y: auto; font-size: 11px; color: #fff; display: flex; flex-direction: column; gap: 4px;
+            margin-bottom: 6px; text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+        }
+        .chat-msg { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; word-break: break-all; }
+        .chat-system { color: #f1c40f; font-weight: bold; }
+        #chat-input-row { display: flex; gap: 4px; }
+        #chat-input {
+            flex: 1; background: rgba(0,0,0,0.9); border: 1px solid #3498db; border-radius: 4px;
+            color: white; padding: 5px 8px; font-size: 11px; outline: none;
+        }
+        #chat-send-btn {
+            background: #3498db; border: none; color: white; font-weight: bold; padding: 5px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+
+        #danger-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; border: 8px solid rgba(231, 76, 60, 0);
+            transition: border-color 0.3s ease; z-index: 25;
+        }
+
+        .game-btn {
+            position: absolute; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-weight: bold; text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; z-index: 100; border: 3px solid #ffffff;
+            pointer-events: auto !important; touch-action: none;
+        }
+        .game-btn:active { transform: scale(0.92); }
+
+        #dash-btn { bottom: 30px; left: 30px; width: 70px; height: 70px; background: rgba(155, 89, 182, 0.9); font-size: 10px; }
+        #reload-btn { bottom: 110px; left: 30px; width: 70px; height: 70px; background: rgba(52, 152, 219, 0.9); font-size: 10px; }
+        #switch-weapon-btn { bottom: 190px; left: 30px; width: 70px; height: 70px; background: rgba(230, 126, 34, 0.9); font-size: 10px; }
+        #build-btn { bottom: 120px; right: 30px; width: 75px; height: 75px; background: rgba(46, 204, 113, 0.9); font-size: 10px; }
+        
+        #fire-btn { bottom: 30px; right: 30px; width: 95px; height: 95px; background: rgba(220, 38, 38, 0.9); font-size: 13px; border-width: 4px; flex-direction: column; }
+        #fire-btn span { font-size: 9px; opacity: 0.8; margin-top: 2px; }
+        
+        #ingame-menu-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(231, 76, 60, 0.9); border: 2px solid white;
+            color: white; font-weight: bold; padding: 8px 12px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #ingame-menu-btn:active { transform: scale(0.92); }
+
+        .ui-panel {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(18, 24, 36, 0.98); display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            color: white; z-index: 1000; font-family: Arial, sans-serif; padding: 20px; text-align: center;
+            pointer-events: auto !important;
+            overflow-y: auto;
+        }
+        .ui-panel h1 { font-size: 26px; color: #00d2d3; margin-bottom: 8px; }
+        .ui-panel p { font-size: 13px; margin-bottom: 12px; color: #dcdde1; }
+
+        .menu-btn {
+            background: #00d2d3; border: none; padding: 12px 20px; margin: 6px;
+            color: #121824; font-size: 14px; font-weight: bold; border-radius: 8px;
+            cursor: pointer; width: 250px; z-index: 1001; pointer-events: auto !important;
+            touch-action: manipulation;
+        }
+        .menu-btn:active { transform: scale(0.95); }
+        .menu-btn.sec { background: #576574; color: white; }
+        .menu-btn.mode { background: #9b59b6; color: white; }
+        .menu-btn.map { background: #e67e22; color: white; }
+        .menu-btn.ad { background: #f1c40f; color: #121824; font-weight: bold; }
+        .menu-btn.rank { background: #27ae60; color: white; }
+        .menu-btn.profile { background: #3498db; color: white; }
+        .menu-btn.server { background: #e84118; color: white; }
+        .menu-btn.char { background: #2ecc71; color: white; }
+        .menu-btn.shop { background: #27ae60; color: white; }
+        .menu-btn.lang { background: #1abc9c; color: white; }
+        .menu-btn.auth { background: #9b59b6; color: white; }
+
+        .room-input {
+            padding: 10px; font-size: 16px; border-radius: 6px; border: 2px solid #00d2d3;
+            background: rgba(0,0,0,0.5); color: white; text-align: center; margin-bottom: 8px; width: 220px;
+            pointer-events: auto !important; z-index: 1001;
+        }
+
+        .color-picker-container {
+            display: flex; gap: 10px; margin: 10px 0; justify-content: center; flex-wrap: wrap;
+        }
+        .color-box {
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        .color-box.selected { border-color: #fff; transform: scale(1.1); }
+
+        .tab-container { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { background: #34495e; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .tab-btn.active { background: #00d2d3; color: #121824; }
+
+        .leaderboard-table {
+            width: 100%; max-width: 360px; background: rgba(0,0,0,0.6);
+            border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2);
+            overflow: hidden; min-height: 140px; display: flex; flex-direction: column; justify-content: flex-start;
+            pointer-events: auto !important; max-height: 220px; overflow-y: auto;
+        }
+        .leaderboard-row {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px;
+        }
+        .leaderboard-row:nth-child(even) { background: rgba(255,255,255,0.05); }
+
+        #pc-controls-info {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.6); font-size: 11px; text-align: center; pointer-events: none; z-index: 5;
+            display: none;
+        }
+
+        #ad-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95); color: white; display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 2000; pointer-events: auto !important;
+        }
+        .ad-box {
+            width: 320px; height: 180px; background: #1e272c; border: 2px solid #f1c40f;
+            border-radius: 12px; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; margin: 15px 0; padding: 10px; box-shadow: 0 0 20px rgba(241, 196, 15, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="danger-overlay"></div>
+
+    <div id="hud" style="display: none;">
+        <div class="stat-badge" id="hud-health">❤️ Can: 100</div>
+        <div class="stat-badge" id="hud-ammo">📦 Mermi: 12/12</div>
+        <div class="stat-badge" id="hud-weapon" style="color: #f1c40f;">🗡️ Bıçak</div>
+        <div class="stat-badge" id="hud-reserve">🔋 Yedek: -</div>
+        <div class="stat-badge" id="hud-money" style="color: #2ecc71;">💵 Dolar: $50</div>
+        <div class="stat-badge" id="hud-score">⭐ Skor: 0</div>
+        <div class="stat-badge" id="hud-wave" style="color: #f1c40f;">🌊 Dalga: 1</div>
+        <div class="stat-badge" id="hud-mode" style="color: #9b59b6;">🎮 Klasik</div>
+    </div>
+
+    <!-- Sohbet ve Konsol Penceresi -->
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <div id="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Sohbet yaz..." maxlength="50" onkeydown="handleChatKey(event)">
+            <button id="chat-send-btn" onclick="sendChatMessage()">GÖNDER</button>
+        </div>
+    </div>
+
+    <button id="team-toggle-btn" onclick="requestClanJoin()">🛡️ KLANA KATIL</button>
+    <button id="shop-toggle-btn" onclick="openShopMenu()">🛒 MAĞAZA ($)</button>
+    <button id="chat-toggle-btn" onclick="toggleChatWindow()">💬 SOHBET</button>
+    <button id="ingame-menu-btn" onclick="showMainMenu()">🏠 ANA MENÜ</button>
+
+    <div id="pc-controls-info">PC Kontrolleri: WASD = Hareket | Mouse = Nişan Al | Sol Tık = Ateş Et | R = Şarjör | E = Silah Değiştir | Boşluk = Dash | Enter = Sohbet</div>
+
+    <div id="out-warning">⚠️ HARİTA DIŞINDASIN!<br><span id="out-timer">10</span>sn İÇİNDE DÖN!</div>
+    <div id="reload-warning">🔄 ŞARJÖR YENİLENİYOR...</div>
+    <div id="wave-announcement">🌊 DALGA 1 BAŞLIYOR!</div>
+
+    <div id="dash-btn" class="game-btn" style="display: none;">DASH</div>
+    <div id="reload-btn" class="game-btn" style="display: none;">ŞARJÖR<br>YENİLE</div>
+    <div id="switch-weapon-btn" class="game-btn" style="display: none;">SİLAH<br>DEĞİŞ</div>
+    <div id="build-btn" class="game-btn" style="display: none;">TARET<br>($120)</div>
+    <div id="fire-btn" class="game-btn" style="display: none;">ATEŞ<br><span>(Sürükle & Nişan Al)</span></div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- ANA MENÜ -->
+    <div id="main-menu" class="ui-panel">
+        <h1 id="txt-title">BRAWL SURVIVAL 2D</h1>
+        <p id="txt-subtitle">Ultimate Multiplayer Sürüm</p>
+        
+        <button class="menu-btn rotate" style="background:#f39c12; color:white;" onclick="toggleFullScreen()">📱 TAM EKRAN (TELEFON UYUMLU)</button>
+        <button class="menu-btn rotate" onclick="enableLandscape()">🔄 YATAY ÇEVİR</button>
+        <button class="menu-btn auth" onclick="showAuthMenu()">🔑 HESAP GİRİŞİ / KAYIT</button>
+        <button class="menu-btn" id="btn-play" onclick="initAudioAndShowModes()">🎮 TEKLİ OYNA (MOD SEÇ)</button>
+        <button class="menu-btn server" id="btn-host-join" onclick="initAudioAndShowHostJoin()">🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)</button>
+        <button class="menu-btn server" id="btn-public-servers" style="background:#2980b9;" onclick="initAudioAndShowServers()">🌍 GENEL SUNUCULAR (CANLI LİSTE)</button>
+        <button class="menu-btn shop" id="btn-shop" onclick="openShopMenu()">🛒 SKİN MAĞAZASI ($)</button>
+        <button class="menu-btn map" id="btn-map" onclick="showMapMenu()">🗺️ HARİTA SEÇİ</button>
+        <button class="menu-btn char" id="btn-char" onclick="showCharacterMenu()">🎨 RENK SEÇİMİ</button>
+        <button class="menu-btn profile" id="btn-profile" onclick="showProfileMenu()">👤 PROFİL</button>
+        <button class="menu-btn rank" id="btn-rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn lang" id="btn-lang" onclick="showLanguageMenu()">🌐 DİL / LANGUAGE</button>
+    </div>
+
+    <!-- HESAP GİRİŞ / KAYIT MENÜSÜ -->
+    <div id="auth-menu" class="ui-panel" style="display: none;">
+        <h1>🔑 OYUNCU HESABI</h1>
+        <p>Çıkıp girdiğinde kaldığın yerden devam etmek için hesap adını gir!</p>
+        <input type="text" id="auth-username-input" class="room-input" placeholder="Hesap Adı (Örn: Arda)..." maxlength="12">
+        <button class="menu-btn" onclick="loginOrRegisterAccount()">GİRİŞ YAP / HESABI YÜKLE</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <!-- DİL SEÇİM MENÜSÜ -->
+    <div id="language-menu" class="ui-panel" style="display: none;">
+        <h1>🌐 DİL SEÇİMİ / LANGUAGE</h1>
+        <p>Oyun dilini seçin / Select game language</p>
+        <button class="menu-btn lang" onclick="setLanguage('tr')">🇹🇷 Türkçe</button>
+        <button class="menu-btn lang" onclick="setLanguage('en')">🇬🇧 English</button>
+        <button class="menu-btn lang" onclick="setLanguage('es')">🇪🇸 Español</button>
+        <button class="menu-btn lang" onclick="setLanguage('de')">🇩🇪 Deutsch</button>
+        <button class="menu-btn lang" onclick="setLanguage('fr')">🇫🇷 Français</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ / BACK</button>
+    </div>
+
+    <!-- ARKADAŞLA OYNA -->
+    <div id="host-join-menu" class="ui-panel" style="display: none;">
+        <h1 id="txt-hostjoin">🤝 ARKADAŞLA OYNA</h1>
+        <p id="txt-hostjoin-desc">Oda kurarak arkadaşını davet et ya da kodla katıl!</p>
+        
+        <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 280px;">
+            <p style="color: #f1c40f; font-weight: bold; margin-bottom: 5px;">🏠 ODA KUR (HOST OL)</p>
+            <input type="text" id="host-room-code-input" class="room-input" placeholder="Kendi Oda Kodunu Yaz..." maxlength="15">
+            <button class="menu-btn server" style="width: 100%; margin: 0;" onclick="hostCustomRoomCode()">ODA KUR & OYNA</button>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 15px; width: 280px;">
+            <p style="color: #3498db; font-weight: bold; margin-bottom: 5px;">🔗 ODAYA KATIL</p>
+            <input type="text" id="join-room-code-input" class="room-input" placeholder="Arkadaşın Kodunu Yaz..." maxlength="15">
+            <button class="menu-btn mode" style="width: 100%; margin: 0;" onclick="joinCustomRoomCode()">ODAYA BAĞLAN</button>
+        </div>
+
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <!-- GENEL SUNUCU MENÜSÜ (CANLI OYUNCU LİSTESİ) -->
+    <div id="public-servers-menu" class="ui-panel" style="display: none;">
+        <h1>🌍 CANLI GENEL SUNUCULAR</h1>
+        <p>Aşağıda oyuncular tarafından açılmış canlı odaları görebilirsin. İstersen sen de yeni bir sunucu kur!</p>
+        <button class="menu-btn server" onclick="showCreateServerDialog()">➕ YENİ SUNUCU KUR</button>
+        <button class="menu-btn sec" style="background:#3498db; width: 180px; padding: 8px; margin-bottom: 10px;" onclick="refreshServerList()">🔄 LİSTEYİ YENİLE</button>
+        <div style="font-weight:bold; color:#f1c40f; margin: 5px 0 5px 0;">--- AÇIK CANLI SUNUCULAR ---</div>
+        <div class="leaderboard-table" id="server-list-container">
+            <!-- Gerçek oda kurulduğunda buraya eklenecek -->
+        </div>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <!-- SKİN MAĞAZASI -->
+    <div id="shop-menu" class="ui-panel" style="display: none;">
+        <h1>🛒 SKİN MAĞAZASI ($)</h1>
+        <p id="shop-money-text">Doların: 💵 $50</p>
+        <div style="font-weight:bold; color:#2ecc71; margin: 10px 0 5px 0;">--- ÖZEL SKİNLER ---</div>
+        <button class="menu-btn shop" onclick="buySkin('Cyberpunk', '#ff007f', 150)">🤖 Cyberpunk (Pembe Neon) - $150</button>
+        <button class="menu-btn shop" onclick="buySkin('Altın Kral', '#ffd700', 300)">👑 Altın Kral (Parıl Parıl) - $300</button>
+        <button class="menu-btn shop" onclick="buySkin('Gölge Ninja', '#2f3640', 250)">🥷 Gölge Ninja (Koyu) - $250</button>
+        <button class="menu-btn shop" onclick="buySkin('Cehennem Alevi', '#ff4500', 200)">🔥 Cehennem Alevi - $200</button>
+        <button class="menu-btn sec" style="margin-top: 20px;" onclick="closeShopMenu()">MENÜYE DÖN</button>
+    </div>
+
+    <div id="map-menu" class="ui-panel" style="display: none;">
+        <h1>🗺️ HARİTA TEMASI SEÇ</h1>
+        <p>Savaşacağın arenanın atmosferini belirle!</p>
+        <button class="menu-btn mode" style="background:#27ae60;" onclick="selectMap('cim')">🌿 Çimlik Vadi (Klasik Yeşil)</button>
+        <button class="menu-btn mode" style="background:#d35400;" onclick="selectMap('col')">🏜️ Kızıl Çöl (Sıcak Kumlar)</button>
+        <button class="menu-btn mode" style="background:#2980b9;" onclick="selectMap('buz')">🧊 Buzul Diyarı (Buz Rengi)</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="character-menu" class="ui-panel" style="display: none;">
+        <h1>🎨 KLASİK RENK SEÇİMİ</h1>
+        <p>Standart karakter rengini seç!</p>
+        <div class="color-picker-container">
+            <div class="color-box selected" style="background: #00d2d3;" onclick="selectColor('#00d2d3', this)"></div>
+            <div class="color-box" style="background: #e74c3c;" onclick="selectColor('#e74c3c', this)"></div>
+            <div class="color-box" style="background: #2ecc71;" onclick="selectColor('#2ecc71', this)"></div>
+            <div class="color-box" style="background: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+            <div class="color-box" style="background: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+            <div class="color-box" style="background: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+        </div>
+        <button class="menu-btn" onclick="showMainMenu()">KAYDET & DÖN</button>
+    </div>
+
+    <div id="profile-menu" class="ui-panel" style="display: none;">
+        <h1 id="prof-title">OYUNCU PROFİLİ</h1>
+        <p id="prof-desc">İsmini ve Klanını belirle!</p>
+        <input type="text" id="player-name-input" class="room-input" placeholder="Oyuncu İsmi..." maxlength="12">
+        <input type="text" id="clan-name-input" class="room-input" placeholder="Klan İsmi..." maxlength="6">
+        <button class="menu-btn" onclick="savePlayerProfile()">KAYDET & DÖN</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="mode-menu" class="ui-panel" style="display: none;">
+        <h1>🎮 OYUN MODU SEÇ</h1>
+        <button class="menu-btn mode" onclick="startSelectedGameMode('Zombilere Karsi')">🧟 ZOMBİLERE KARŞI İNSANLAR</button>
+        <button class="menu-btn mode" style="background:#e74c3c;" onclick="startSelectedGameMode('PvP')">⚔️ İNSANLAR VS İNSANLAR (PVP)</button>
+        <button class="menu-btn mode" style="background:#27ae60;" onclick="startSelectedGameMode('Boss')">👑 BOSSLAR VS İNSANLAR</button>
+        <button class="menu-btn mode" style="background:#8e44ad;" onclick="startSelectedGameMode('Enfeksiyon')">☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="leaderboard-menu" class="ui-panel" style="display: none;">
+        <h1>🏆 LİDERLİK TABLOSU</h1>
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="setLeaderboardMode('Zombilere Karsi', this)">Zombiler</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('PvP', this)">PvP</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('Boss', this)">Boss</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('Enfeksiyon', this)">Enfeksiyon</button>
+        </div>
+        <div class="tab-container">
+            <button class="tab-btn active" id="tab-all" onclick="setLeaderboardPeriod('all')">Tüm Zamanlar</button>
+            <button class="tab-btn" id="tab-weekly" onclick="setLeaderboardPeriod('weekly')">Bu Hafta</button>
+        </div>
+        <div class="leaderboard-table" id="leaderboard-content"></div>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="downed-screen" class="ui-panel" style="display: none; background: rgba(192, 57, 43, 0.9);">
+        <h1 style="color: #fff; font-size: 32px;">⚠️ BAYILDIN!</h1>
+        <p id="downed-timer-text">Arkadaşının yeşil çemberine gelmesini bekle veya: 10sn</p>
+        <button class="menu-btn ad" onclick="selfRevive()">⚡ KENDİ KENDİNE AYAĞA KALK</button>
+    </div>
+
+    <div id="game-over" class="ui-panel" style="display: none;">
+        <h1 id="game-over-title" style="color: #ff4757;">OYUN BİTTİ!</h1>
+        <p id="final-score">Skorun: 0</p>
+        <button id="revive-btn" class="menu-btn ad" onclick="watchAdToRevive()">📺 REKLAM İZLE & CANLAN (<span id="ad-count">3</span>/3)</button>
+        <button class="menu-btn rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn" onclick="showModeSelect()">🔄 Yeniden Başla</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">🏠 Ana Menü</button>
+    </div>
+
+    <div id="ad-screen">
+        <h2>🎬 SPONSORLU REKLAM YÖNLENDİRİLİYOR...</h2>
+        <div class="ad-box">
+            <p style="color:#00d2d3; font-weight:bold; font-size:16px; margin-bottom:5px;">🔥 BRAWL SURVIVAL PREMİUM</p>
+            <p style="font-size:12px; color:#aaa;">Sponsor sitesi yeni sekmede açıldı!</p>
+        </div>
+        <h1 id="ad-timer" style="color: #f1c40f; font-size: 42px;">5</h1>
+        <button class="menu-btn ad" style="width: 200px; margin-top: 10px; background: #e74c3c; color: white;" onclick="skipAdDirectly()">⏭️ REKLAMI ATLA</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let playerName = localStorage.getItem("brawl_playerName") || "Arda";
+        let clanName = localStorage.getItem("brawl_clanName") || "PRO";
+        let playerColor = localStorage.getItem("brawl_playerColor") || "#00d2d3";
+        let savedMoney = parseInt(localStorage.getItem("brawl_money")) || 50;
+
+        let currentSkin = "Varsayılan";
+        let currentMap = "cim";
+        let isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
+        let clanJoined = false;
+        let isGodMode = false;
+        let isChatOpen = false;
+        let isZombified = false;
+        let currentLang = 'tr';
+
+        function saveGameData() {
+            localStorage.setItem("brawl_playerName", playerName);
+            localStorage.setItem("brawl_clanName", clanName);
+            localStorage.setItem("brawl_playerColor", playerColor);
+            localStorage.setItem("brawl_money", player.money);
+        }
+
+        const translations = {
+            tr: { 
+                title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Sürüm", 
+                play: "🎮 TEKLİ OYNA (MOD SEÇ)", hostJoin: "🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)", 
+                publicServers: "🌍 GENEL SUNUCU KUR / KATIL", shop: "🛒 SKİN MAĞAZASI", map: "🗺️ HARİTA SEÇİ", 
+                char: "🎨 RENK SEÇİMİ", profile: "👤 PROFİL", rank: "🏆 LİDERLİK TABLOSU", lang: "🌐 DİL / LANGUAGE" 
+            },
+            en: { 
+                title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Edition", 
+                play: "🎮 SINGLEPLAYER (SELECT MODE)", hostJoin: "🌐 PLAY WITH FRIENDS (HOST / JOIN)", 
+                publicServers: "🌍 PUBLIC SERVERS", shop: "🛒 SKIN SHOP", map: "🗺️ MAP SELECTION", 
+                char: "🎨 COLOR SELECTION", profile: "👤 PROFILE", rank: "🏆 LEADERBOARD", lang: "🌐 LANGUAGE" 
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            let t = translations[lang] || translations['tr'];
+            document.getElementById("txt-title").innerText = t.title;
+            document.getElementById("txt-subtitle").innerText = t.subtitle;
+            document.getElementById("btn-play").innerText = t.play;
+            document.getElementById("btn-host-join").innerText = t.hostJoin;
+            document.getElementById("btn-public-servers").innerText = t.publicServers;
+            document.getElementById("btn-shop").innerText = t.shop;
+            document.getElementById("btn-map").innerText = t.map;
+            document.getElementById("btn-char").innerText = t.char;
+            document.getElementById("btn-profile").innerText = t.profile;
+            document.getElementById("btn-rank").innerText = t.rank;
+            document.getElementById("btn-lang").innerText = t.lang;
+            showMainMenu();
+        }
+
+        function showLanguageMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "flex";
+        }
+
+        function showAuthMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "flex";
+            document.getElementById("auth-username-input").value = playerName;
+        }
+
+        function loginOrRegisterAccount() {
+            let val = document.getElementById("auth-username-input").value.trim();
+            if (val) {
+                playerName = val;
+                saveGameData();
+                alert(`Hesap yüklendi/açıldı! Hoş geldin, ${playerName}`);
+                showMainMenu();
+            } else {
+                alert("Lütfen geçerli bir hesap adı yaz!");
+            }
+        }
+
+        // GERÇEK OYUNCU SUNUCULARI LİSTESİ (Sadece insanlar açtığında dolar)
+        let activeHostedRooms = [];
+
+        let peer = null, conn = null, myPeerId = null;
+        let isHost = false;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let musicInterval = null;
+        let isMusicPlaying = false;
+
+        function startBGM() {
+            if (isMusicPlaying) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            isMusicPlaying = true;
+            const notes = [130.81, 164.81, 196.00, 220.00, 246.94, 196.00, 164.81, 130.81];
+            let step = 0;
+            musicInterval = setInterval(() => {
+                if (!isMusicPlaying) return;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+                step++;
+            }, 300);
+        }
+
+        function stopBGM() {
+            isMusicPlaying = false;
+            if (musicInterval) clearInterval(musicInterval);
+        }
+
+        function initAudioAndShowModes() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            showModeSelect();
+        }
+
+        function initAudioAndShowHostJoin() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "flex";
+        }
+
+        function initAudioAndShowServers() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            updateServerListUI();
+            showPublicServers();
+        }
+
+        function showPublicServers() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "flex";
+        }
+
+        function refreshServerList() {
+            updateServerListUI();
+            alert("Sunucu listesi güncellendi!");
+        }
+
+        function updateServerListUI() {
+            let container = document.getElementById("server-list-container");
+            if (activeHostedRooms.length === 0) {
+                container.innerHTML = `<div class="leaderboard-row" style="color: #aaa; text-align: center; justify-content: center; padding: 15px;">Şu an açık canlı sunucu yok. İlk sunucuyu sen kur!</div>`;
+            } else {
+                let html = "";
+                activeHostedRooms.forEach(room => {
+                    html += `<div class="leaderboard-row">
+                        <span>🎮 ${room.name} (${room.mode})</span>
+                        <button class="menu-btn server" style="width:90px; padding:6px; margin:0; font-size:11px;" onclick="connectToLiveServer('${room.id}', '${room.mode}')">KATIL</button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            }
+        }
+
+        function showCreateServerDialog() {
+            let mode = prompt("Kurmak istediğin modu yazın:\n1 - Zombilere Karsi\n2 - PvP\n3 - Boss\n4 - Enfeksiyon", "1");
+            let selected = "Zombilere Karsi";
+            if (mode === "2") selected = "PvP";
+            else if (mode === "3") selected = "Boss";
+            else if (mode === "4") selected = "Enfeksiyon";
+
+            let roomId = "brawl_live_" + Math.floor(Math.random() * 89999 + 10000);
+            isMultiplayer = true;
+            isHost = true;
+
+            if (peer) peer.destroy();
+            peer = new Peer(roomId);
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                let roomObj = { id: id, name: `${playerName}'in Odası`, mode: selected };
+                activeHostedRooms.push(roomObj);
+                alert(`🌐 Sunucu Başarıyla Açıldı! Mod: ${selected}. Diğer oyuncular listede senin odanı görebilir.`);
+                startGame(selected);
+            });
+
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnectionEvents();
+                friendPlayer.active = true;
+                printConsole("🔗 Bir oyuncu senin canlı sunucuna katıldı!");
+            });
+
+            peer.on('error', (err) => { alert("Sunucu kurulamadı: " + err); });
+        }
+
+        function connectToLiveServer(roomId, mode) {
+            isMultiplayer = true;
+            isHost = false;
+            if (peer) peer.destroy();
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                conn = peer.connect(roomId);
+                conn.on('open', () => {
+                    setupConnectionEvents();
+                    friendPlayer.active = true;
+                    alert(`🌐 ${mode} odasına başarıyla katıldın!`);
+                    startGame(mode);
+                });
+            });
+
+            peer.on('error', (err) => { alert("Bağlantı hatası: Sunucu kapanmış olabilir!"); });
+        }
+
+        function setupConnectionEvents() {
+            if (!conn) return;
+            conn.on('open', () => {
+                friendPlayer.active = true;
+                printConsole("✅ Sunucuya/Odaya bağlandı!");
+            });
+            conn.on('data', (d) => {
+                if (d.chatMsg) {
+                    printConsole(d.chatMsg);
+                    return;
+                }
+                friendPlayer.x = d.x; 
+                friendPlayer.y = d.y; 
+                friendPlayer.angle = d.angle;
+                friendPlayer.health = d.health; 
+                friendPlayer.score = d.score; 
+                friendPlayer.name = d.name;
+                friendPlayer.color = d.color || "#ff7979";
+                friendPlayer.weapon = d.weapon || "Tabanca";
+                friendPlayer.isZombified = d.isZombified; 
+                friendPlayer.isDowned = d.isDowned;
+                friendPlayer.active = true;
+
+                if (isHost) {
+                    if (d.bulletFired) {
+                        bullets.push(d.bulletFired);
+                    }
+                    if (d.hitPlayer && selectedMode === "PvP") {
+                        player.health -= d.damage || 5;
+                        if (player.health <= 0) triggerDowned();
+                        updateUI();
+                    }
+                    if (d.reviveRequest && friendPlayer.isDowned) {
+                        friendPlayer.health = 50; friendPlayer.isDowned = false;
+                    }
+                } else {
+                    if (d.enemies) enemies = d.enemies;
+                    if (d.currentWave) currentWave = d.currentWave;
+                    if (d.hitPlayer && selectedMode === "PvP") {
+                        player.health -= d.damage || 5;
+                        if (player.health <= 0) triggerDowned();
+                        updateUI();
+                    }
+                    if (d.reviveResponse) {
+                        player.health = 50; isDowned = false;
+                        document.getElementById("downed-screen").style.display = "none";
+                    }
+                }
+            });
+        }
+
+        function hostCustomRoomCode() {
+            let code = document.getElementById("host-room-code-input").value.trim();
+            if (!code) { alert("Lütfen bir oda kodu girin!"); return; }
+            let fullCode = "brawl_room_" + code;
+            isMultiplayer = true; isHost = true;
+            if (peer) peer.destroy();
+            peer = new Peer(fullCode);
+            peer.on('open', (id) => {
+                myPeerId = id;
+                alert(`Oda kuruldu! Kod: ${code}`);
+                showModeSelect();
+            });
+            peer.on('error', (err) => { alert("Sunucu hatası: " + err); });
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnectionEvents();
+                friendPlayer.active = true;
+                printConsole("🔗 Oyuncu odaya katıldı!");
+            });
+        }
+
+        function joinCustomRoomCode() {
+            let code = document.getElementById("join-room-code-input").value.trim();
+            if (!code) { alert("Lütfen oda kodu gir!"); return; }
+            let fullCode = code.startsWith("brawl_") ? code : "brawl_room_" + code;
+            connectToLiveServer(fullCode, "Zombilere Karsi");
+        }
+
+        function showCharacterMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("character-menu").style.display = "flex";
+        }
+
+        function showMapMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("map-menu").style.display = "flex";
+        }
+
+        function selectMap(mapType) {
+            currentMap = mapType;
+            alert(mapType === 'cim' ? "🌿 Çimlik Vadi seçildi!" : (mapType === 'col' ? "🏜️ Kızıl Çöl seçildi!" : "🧊 Buzul Diyarı seçildi!"));
+            showMainMenu();
+        }
+
+        function selectColor(hex, element) {
+            playerColor = hex;
+            currentSkin = "Varsayılan";
+            document.querySelectorAll('.color-box').forEach(b => b.classList.remove('selected'));
+            element.classList.add('selected');
+            saveGameData();
+        }
+
+        function openShopMenu() {
+            document.getElementById("shop-menu").style.display = "flex";
+            document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`;
+        }
+
+        function closeShopMenu() {
+            document.getElementById("shop-menu").style.display = "none";
+        }
+
+        function playErrorSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            let now = audioCtx.currentTime;
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, now);
+            osc.frequency.setValueAtTime(90, now + 0.15);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        }
+
+        function buySkin(skinName, hexColor, price) {
+            if (player.money >= price) {
+                player.money -= price;
+                playerColor = hexColor;
+                currentSkin = skinName;
+                saveGameData();
+                alert(`Tebrikler! ${skinName} skinini başarıyla satın aldın! 🎉`);
+                updateUI();
+                document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`;
+            } else {
+                playErrorSound();
+            }
+        }
+
+        function toggleChatWindow() {
+            let chatBox = document.getElementById("chat-container");
+            isChatOpen = !isChatOpen;
+            if (isChatOpen) {
+                chatBox.style.display = "flex";
+                document.getElementById("chat-input").focus();
+            } else {
+                chatBox.style.display = "none";
+                document.getElementById("chat-input").blur();
+            }
+        }
+
+        function printConsole(msg) {
+            let container = document.getElementById("chat-messages");
+            let div = document.createElement("div");
+            div.className = "chat-msg chat-system";
+            div.innerText = msg;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatKey(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        }
+
+        function sendChatMessage() {
+            let input = document.getElementById("chat-input");
+            let text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+
+            let lower = text.toLowerCase();
+            if (lower === "/zombi" || lower === "/zombiol") {
+                isZombified = true; player.speed = 6.0; player.health = 150;
+                printConsole("🦠 [Admin] Zombiye dönüştürüldü!");
+                updateUI();
+                return;
+            } else if (lower === "/insan" || lower === "/insanol") {
+                isZombified = false; player.speed = 5.2; player.health = 100;
+                addWeaponToInventory("Tabanca");
+                printConsole("👤 [Admin] İnsana dönüştürüldü!");
+                updateUI();
+                return;
+            } else if (lower === "/para" || lower === "/dolar") {
+                player.money += 1000;
+                saveGameData();
+                printConsole("💵 [Admin] +$1000 Dolar eklendi!");
+                updateUI();
+                return;
+            } else if (lower === "/hiz" || lower === "/speed") {
+                player.speed = 10.5;
+                printConsole("⚡ [Admin] Süper hız aktif!");
+                updateUI();
+                return;
+            } else if (lower === "/oldur" || lower === "/clear") {
+                enemies = [];
+                printConsole("💀 [Admin] Tüm zombiler temizlendi!");
+                updateUI();
+                return;
+            }
+
+            let container = document.getElementById("chat-messages");
+            let div = document.createElement("div");
+            div.className = "chat-msg";
+            div.innerText = `${playerName}: ${text}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+
+            if (isMultiplayer && conn && conn.open) {
+                conn.send({ chatMsg: `${playerName}: ${text}` });
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && gameState === "PLAYING") toggleChatWindow();
+        });
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            let now = audioCtx.currentTime;
+
+            if (type === 'shoot') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'slash') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
+            } else if (type === 'hit') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            }
+        }
+
+        let leaderboardData = {
+            all: { "Zombilere Karsi": [], "PvP": [], "Boss": [], "Enfeksiyon": [] },
+            weekly: { "Zombilere Karsi": [], "PvP": [], "Boss": [], "Enfeksiyon": [] }
+        };
+        let currentLbPeriod = "all";
+        let currentLbMode = "Zombilere Karsi";
+
+        function saveScoreToLeaderboard(score) {
+            let fullName = clanJoined ? `[${clanName}] ${playerName}` : playerName;
+            ['all', 'weekly'].forEach(period => {
+                let list = leaderboardData[period][selectedMode];
+                let existing = list.find(item => item.name === fullName);
+                if (existing) { if (score > existing.score) existing.score = score; }
+                else { list.push({name: fullName, score: score}); }
+                list.sort((a,b) => b.score - a.score);
+            });
+        }
+
+        function setLeaderboardPeriod(period) {
+            currentLbPeriod = period;
+            document.getElementById("tab-all").classList.toggle("active", period === 'all');
+            document.getElementById("tab-weekly").classList.toggle("active", period === 'weekly');
+            renderLeaderboard();
+        }
+
+        function setLeaderboardMode(mode, btnElement) {
+            currentLbMode = mode;
+            let container = btnElement.parentElement;
+            container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            let container = document.getElementById("leaderboard-content");
+            let list = leaderboardData[currentLbPeriod][currentLbMode] || [];
+            let html = "";
+            if (list.length === 0) html = `<div style="padding:15px; color:#aaa;">Bu mod ve zaman diliminde henüz kayıt yok.</div>`;
+            else list.forEach((item, index) => { html += `<div class="leaderboard-row"><span>${index+1}. ${item.name}</span><span>⭐ ${item.score}</span></div>`; });
+            container.innerHTML = html;
+        }
+
+        function showLeaderboard() {
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("leaderboard-menu").style.display = "flex";
+            renderLeaderboard();
+        }
+
+        function showProfileMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("profile-menu").style.display = "flex";
+            document.getElementById("player-name-input").value = playerName;
+            document.getElementById("clan-name-input").value = clanName;
+        }
+
+        function savePlayerProfile() {
+            let val = document.getElementById("player-name-input").value.trim();
+            let cVal = document.getElementById("clan-name-input").value.trim();
+            if (val) playerName = val;
+            if (cVal) clanName = cVal.toUpperCase();
+            saveGameData();
+            showMainMenu();
+        }
+
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+            }
+            enableLandscape();
+        }
+
+        function enableLandscape() {
+            if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+        }
+
+        const WORLD_WIDTH = 3500;
+        const WORLD_HEIGHT = 3500;
+
+        let gameState = "MENU";
+        let selectedMode = "Zombilere Karsi";
+        let isMultiplayer = false;
+        let reviveRight = 3, outOfBoundsTimer = 600;
+        let isDowned = false, downedTimer = 10;
+        let downedInterval = null;
+        
+        let currentWave = 1;
+        let waveEnemiesLeft = 10;
+        let enemiesSpawnedInWave = 0;
+        let turrets = [];
+
+        let player = { 
+            x: 1750, y: 1750, radius: 22, speed: 5.2, 
+            health: 100, money: savedMoney, score: 0, angle: 0, moveAngle: 0, dashCooldown: 0,
+            weapon: "Bıçak", ammo: 999, maxAmmo: 999, reserveAmmo: 0, isReloading: false,
+            inventory: ["Bıçak", "Katana", "Tabanca"]
+        };
+        let friendPlayer = { x: 1800, y: 1750, radius: 22, color: "#ff7979", health: 100, angle: 0, name: "Arkadaş", weapon: "Tabanca", score: 0, active: false, isDowned: false };
+
+        let bullets = [], enemies = [], crates = [], explosions = [];
+        let lastShotTime = 0;
+
+        let keys = { w: false, a: false, s: false, d: false };
+        let mouse = { x: 0, y: 0, down: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== "PLAYING" || isChatOpen) return;
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+            if (e.key === 'r' || e.key === 'R') reloadWeapon();
+            if (e.key === 'e' || e.key === 'E') cycleInventoryWeapon();
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (player.dashCooldown <= 0 && !isDowned) {
+                    player.x += Math.cos(player.moveAngle) * 180;
+                    player.y += Math.sin(player.moveAngle) * 180;
+                    player.dashCooldown = 600;
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        window.addEventListener('mousemove', (e) => { 
+            mouse.x = e.clientX; mouse.y = e.clientY; 
+            if (gameState === "PLAYING") {
+                player.angle = Math.atan2((mouse.y - canvas.height/2), (mouse.x - canvas.width/2));
+            }
+        });
+        window.addEventListener('mousedown', (e) => {
+            if (gameState !== "PLAYING" || isChatOpen || e.target.closest('.ui-panel') || e.target.closest('.game-btn') || e.target.closest('#hud') || e.target.closest('#ingame-menu-btn') || e.target.closest('#chat-container')) return;
+            mouse.down = true;
+            shoot();
+        });
+        window.addEventListener('mouseup', () => { mouse.down = false; });
+
+        function generateCrates() {
+            crates = [];
+            for(let c = 0; c < 28; c++) {
+                crates.push({
+                    x: Math.random() * (WORLD_WIDTH - 400) + 200,
+                    y: Math.random() * (WORLD_HEIGHT - 400) + 200,
+                    size: 44, health: 3, maxHealth: 3
+                });
+            }
+        }
+
+        let joystick = { active: false, id: null, baseX: 0, baseY: 0, touchX: 0, touchY: 0, angle: 0, power: 0, maxRadius: 65 };
+
+        window.addEventListener("pointerdown", (e) => {
+            if (gameState === "PLAYING" && !isChatOpen && !e.target.closest('.game-btn') && !e.target.closest('#hud') && !e.target.closest('#ingame-menu-btn') && !e.target.closest('#chat-container')) {
+                if (!joystick.active) {
+                    joystick.active = true; 
+                    joystick.id = e.pointerId;
+                    joystick.baseX = e.clientX; 
+                    joystick.baseY = e.clientY;
+                    joystick.touchX = e.clientX; 
+                    joystick.touchY = e.clientY;
+                    joystick.power = 0;
+                }
+            }
+        });
+
+        window.addEventListener("pointermove", (e) => {
+            if (joystick.active && e.pointerId === joystick.id) {
+                let dx = e.clientX - joystick.baseX;
+                let dy = e.clientY - joystick.baseY;
+                let dist = Math.hypot(dx, dy);
+                player.moveAngle = Math.atan2(dy, dx);
+                
+                if (dist < joystick.maxRadius) {
+                    joystick.touchX = e.clientX; 
+                    joystick.touchY = e.clientY;
+                    joystick.power = dist / joystick.maxRadius;
+                } else {
+                    joystick.touchX = joystick.baseX + Math.cos(player.moveAngle) * joystick.maxRadius;
+                    joystick.touchY = joystick.baseY + Math.sin(player.moveAngle) * joystick.maxRadius;
+                    joystick.power = 1;
+                }
+            }
+        });
+
+        window.addEventListener("pointerup", (e) => { if (joystick.active && e.pointerId === joystick.id) { joystick.active = false; joystick.power = 0; } });
+        window.addEventListener("pointercancel", (e) => { if (joystick.active && e.pointerId === joystick.id) { joystick.active = false; joystick.power = 0; } });
+
+        let fireAim = { active: false, id: null, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0 };
+        const fireBtn = document.getElementById("fire-btn");
+
+        fireBtn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            if (gameState !== "PLAYING" || isDowned) return;
+            fireAim.active = true;
+            fireAim.id = e.pointerId;
+            fireAim.startX = e.clientX;
+            fireAim.startY = e.clientY;
+            fireAim.currentX = e.clientX;
+            fireAim.currentY = e.clientY;
+        });
+
+        window.addEventListener("pointermove", (e) => {
+            if (fireAim.active && e.pointerId === fireAim.id) {
+                fireAim.currentX = e.clientX;
+                fireAim.currentY = e.clientY;
+                let dx = fireAim.currentX - fireAim.startX;
+                let dy = fireAim.currentY - fireAim.startY;
+                if (Math.hypot(dx, dy) > 8) {
+                    player.angle = Math.atan2(dy, dx);
+                    shoot();
+                }
+            }
+        });
+
+        window.addEventListener("pointerup", (e) => {
+            if (fireAim.active && e.pointerId === fireAim.id) {
+                let dx = fireAim.currentX - fireAim.startX;
+                let dy = fireAim.currentY - fireAim.startY;
+                if (Math.hypot(dx, dy) > 8) {
+                    player.angle = Math.atan2(dy, dx);
+                }
+                shoot();
+                fireAim.active = false;
+            }
+        });
+
+        window.addEventListener("pointercancel", (e) => {
+            if (fireAim.active && e.pointerId === fireAim.id) { fireAim.active = false; }
+        });
+
+        function showModeSelect() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("mode-menu").style.display = "flex";
+            document.getElementById("game-over").style.display = "none";
+        }
+
+        function showMainMenu() {
+            gameState = "MENU";
+            if (downedInterval) clearInterval(downedInterval);
+            document.getElementById("mode-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("profile-menu").style.display = "none";
+            document.getElementById("character-menu").style.display = "none";
+            document.getElementById("leaderboard-menu").style.display = "none";
+            document.getElementById("map-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("shop-menu").style.display = "none";
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("downed-screen").style.display = "none";
+            document.getElementById("main-menu").style.display = "flex";
+            document.getElementById("danger-overlay").style.borderColor = "rgba(231, 76, 60, 0)";
+            document.getElementById("pc-controls-info").style.display = "none";
+            document.getElementById("chat-container").style.display = "none";
+            showHUD(false);
+            stopBGM();
+        }
+
+        function requestClanJoin() {
+            if (clanJoined) {
+                clanJoined = false;
+                let btn = document.getElementById("team-toggle-btn");
+                btn.innerText = "🛡️ KLANA KATIL"; btn.classList.remove("teamed");
+                alert("Klandan ayrıldınız.");
+            } else {
+                clanJoined = true;
+                let btn = document.getElementById("team-toggle-btn");
+                btn.innerText = "❌ KLANDAN AYRIL"; btn.classList.add("teamed");
+                alert(`Tebrikler! [${clanName}] klanına katıldın.`);
+            }
+            updateUI();
+        }
+
+        let adInterval = null;
+        function watchAdToRevive() {
+            if (reviveRight <= 0) return;
+            window.open("https://www.highrevenuegate.com/z69x7x6y?key=0a253ac9afea5334c8594cb0683e9d5b", "_blank");
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("ad-screen").style.display = "flex";
+            let timeLeft = 5;
+            document.getElementById("ad-timer").innerText = timeLeft;
+            if (adInterval) clearInterval(adInterval);
+            adInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById("ad-timer").innerText = timeLeft;
+                if (timeLeft <= 0) { clearInterval(adInterval); completeRevive(); }
+            }, 1000);
+        }
+
+        function skipAdDirectly() { if (adInterval) clearInterval(adInterval); completeRevive(); }
+
+        function completeRevive() {
+            document.getElementById("ad-screen").style.display = "none";
+            reviveRight--;
+            document.getElementById("ad-count").innerText = reviveRight;
+            player.health = 100; isDowned = false; isZombified = false; player.x = 1750; player.y = 1750; outOfBoundsTimer = 600;
+            document.getElementById("out-warning").style.display = "none";
+            gameState = "PLAYING"; showHUD(true); updateUI();
+        }
+
+        function selfRevive() {
+            if (downedInterval) clearInterval(downedInterval);
+            document.getElementById("downed-screen").style.display = "none";
+            player.health = 40; isDowned = false;
+            updateUI();
+        }
+
+        function reloadWeapon() {
+            if (player.isReloading || player.weapon === "Bıçak" || player.weapon === "Katana" || player.reserveAmmo <= 0 || isZombified) return;
+            player.isReloading = true;
+            document.getElementById("reload-warning").style.display = "block";
+            setTimeout(() => {
+                let needed = player.maxAmmo - player.ammo;
+                let take = Math.min(needed, player.reserveAmmo);
+                player.ammo += take; player.reserveAmmo -= take;
+                player.isReloading = false;
+                document.getElementById("reload-warning").style.display = "none";
+                updateUI();
+            }, 1200);
+        }
+
+        const dashBtn = document.getElementById("dash-btn");
+        const reloadBtn = document.getElementById("reload-btn");
+        const switchWeaponBtn = document.getElementById("switch-weapon-btn");
+        const buildBtn = document.getElementById("build-btn");
+
+        dashBtn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            if (gameState === "PLAYING" && player.dashCooldown <= 0 && !isDowned) {
+                player.x += Math.cos(player.moveAngle) * 180; player.y += Math.sin(player.moveAngle) * 180; player.dashCooldown = 600;
+            }
+        });
+        reloadBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); if (gameState === "PLAYING") reloadWeapon(); });
+        switchWeaponBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); if (gameState === "PLAYING" && !isZombified) cycleInventoryWeapon(); });
+        
+        buildBtn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            if (gameState === "PLAYING" && player.money >= 120 && !isZombified) {
+                player.money -= 120;
+                saveGameData();
+                turrets.push({
+                    x: player.x + Math.cos(player.angle) * 50,
+                    y: player.y + Math.sin(player.angle) * 50,
+                    range: 300, health: 15, maxHealth: 15, lastShootTime: 0
+                });
+                updateUI();
+            } else if (gameState === "PLAYING" && player.money < 120) {
+                playErrorSound();
+            }
+        });
+
+        function addWeaponToInventory(wName) {
+            if (isZombified) return;
+            if (!player.inventory.includes(wName)) player.inventory.push(wName);
+            player.weapon = wName;
+            if (wName === "Bıçak" || wName === "Katana") { player.maxAmmo = 999; player.ammo = 999; player.reserveAmmo = 0; }
+            else {
+                if (wName === "Tabanca") player.maxAmmo = 12;
+                else if (wName === "Taramalı") player.maxAmmo = 30;
+                else if (wName === "Pompalı") player.maxAmmo = 6;
+                else if (wName === "Bazuka") player.maxAmmo = 3;
+                player.ammo = player.maxAmmo; player.reserveAmmo = player.maxAmmo * 3;
+            }
+            updateUI();
+        }
+
+        function cycleInventoryWeapon() {
+            if (isZombified) return;
+            let idx = player.inventory.indexOf(player.weapon);
+            idx = (idx + 1) % player.inventory.length;
+            addWeaponToInventory(player.inventory[idx]);
+        }
+
+        function shoot() {
+            if (player.isReloading || isDowned) return;
+            if (isZombified) return;
+
+            if (player.weapon !== "Bıçak" && player.weapon !== "Katana" && player.ammo <= 0) { reloadWeapon(); return; }
+            let now = Date.now();
+            
+            let cooldown = player.weapon === "Taramalı" ? 110 : ((player.weapon === "Bıçak" || player.weapon === "Katana") ? 180 : 350);
+            if (now - lastShotTime < cooldown) return;
+            lastShotTime = now;
+            if (player.weapon !== "Bıçak" && player.weapon !== "Katana") player.ammo--;
+            updateUI();
+            playSound((player.weapon === "Bıçak" || player.weapon === "Katana") ? 'slash' : 'shoot');
+
+            if (player.weapon === "Bıçak" || player.weapon === "Katana") {
+                let reach = player.weapon === "Katana" ? 50 : 35;
+                let damage = player.weapon === "Katana" ? 6.0 : 3.5;
+                let kx = player.x + Math.cos(player.angle)*reach, ky = player.y + Math.sin(player.angle)*reach;
+                
+                if (friendPlayer.active) {
+                    if (Math.hypot(kx - friendPlayer.x, ky - friendPlayer.y) < friendPlayer.radius + 20) {
+                        playSound('hit');
+                        if (isMultiplayer && conn && conn.open) {
+                            conn.send({ hitPlayer: true, damage: damage * 10 });
+                        }
+                    }
+                }
+
+                enemies.forEach((en, idx) => {
+                    if (Math.hypot(kx - en.x, ky - en.y) < en.radius + 20) {
+                        en.health -= damage; playSound('hit');
+                        if (en.health <= 0) { 
+                            enemies.splice(idx, 1); player.score += en.scoreVal; 
+                            if (Math.random() < 0.25) {
+                                let droppedMoney = Math.floor(Math.random() * 4) + 2;
+                                player.money += droppedMoney;
+                                saveGameData();
+                                printConsole(`💵 Zombiden +$${droppedMoney} düştü!`);
+                            }
+                            checkWaveProgress(); updateUI(); 
+                        }
+                    }
+                });
+                crates.forEach((cr, idx) => {
+                    if (Math.hypot(kx - cr.x, ky - cr.y) < cr.size/2 + 20) {
+                        cr.health--;
+                        if (cr.health <= 0) {
+                            crates.splice(idx, 1);
+                            player.money += 25;
+                            saveGameData();
+                            let weaponsList = ["Taramalı", "Pompalı", "Bazuka", "Katana"];
+                            let randomDrop = weaponsList[Math.floor(Math.random() * weaponsList.length)];
+                            addWeaponToInventory(randomDrop);
+                            printConsole(`🎁 Kutudan ${randomDrop} ve $25 Dolar çıktı!`);
+                            updateUI();
+                        }
+                    }
+                });
+            } else if (player.weapon === "Pompalı") {
+                for (let angleOffset of [-0.2, 0, 0.2]) {
+                    let finalAngle = player.angle + angleOffset;
+                    let bData = { x: player.x, y: player.y, vx: Math.cos(finalAngle)*15, vy: Math.sin(finalAngle)*15, radius: 5, damage: 1.2, isBazooka: false };
+                    bullets.push(bData);
+                    if (isMultiplayer && conn && conn.open) conn.send({ bulletFired: bData });
+                }
+            } else {
+                let isBaz = (player.weapon === "Bazuka");
+                let bData = { x: player.x, y: player.y, vx: Math.cos(player.angle)*16, vy: Math.sin(player.angle)*16, radius: isBaz ? 8 : 6, damage: isBaz ? 5.0 : 1.5, isBazooka: isBaz };
+                bullets.push(bData);
+                if (isMultiplayer && conn && conn.open) conn.send({ bulletFired: bData });
+            }
+        }
+
+        function spawnEnemy() {
+            if (gameState !== "PLAYING" || isDowned) return;
+            if (selectedMode === "PvP") return;
+            if (isMultiplayer && !isHost) return;
+            if (selectedMode === "Boss" && enemies.length > 0) return;
+            if (selectedMode !== "Boss" && enemiesSpawnedInWave >= waveEnemiesLeft) return;
+            if (enemies.length >= 45) return;
+
+            let ex = player.x + (Math.random() - 0.5) * 1600, ey = player.y + (Math.random() - 0.5) * 1600;
+            if (Math.hypot(player.x - ex, player.y - ey) < 350) return;
+
+            let randType = Math.random();
+            let type = "normal";
+            let color = "#ff4757";
+            let speed = 1.3 + (currentWave * 0.05);
+            let health = 3.0;
+            let radius = 18;
+            let scoreVal = 25;
+            let damage = 0.6;
+
+            if (randType < 0.25) {
+                type = "runner"; color = "#e67e22"; speed *= 1.8; health = 2.0; radius = 15; scoreVal = 40; damage = 0.4;
+            } else if (randType < 0.40) {
+                type = "tank"; color = "#8e44ad"; speed *= 0.6; health = 9.0; radius = 28; scoreVal = 80; damage = 1.2;
+            } else if (randType < 0.50) {
+                type = "bomber"; color = "#f1c40f"; speed *= 1.3; health = 1.5; radius = 16; scoreVal = 60; damage = 2.0;
+            }
+
+            if (selectedMode === "Boss") {
+                type = "boss"; color = "#2c3e50"; speed = 1.5; health = 60.0; radius = 42; scoreVal = 500; damage = 3.0;
+            }
+
+            enemies.push({ x: ex, y: ey, radius, speed, health, maxHealth: health, color, scoreVal, damage, type });
+            enemiesSpawnedInWave++;
+        }
+        setInterval(spawnEnemy, 750);
+
+        function checkWaveProgress() {
+            if (selectedMode === "Boss" && enemies.length === 0) {
+                player.score += 500; alert("🎉 TEBRİKLER! BOSS'U YENDİN!"); showMainMenu(); return;
+            }
+            if (enemiesSpawnedInWave >= waveEnemiesLeft && enemies.length === 0 && selectedMode !== "Boss" && selectedMode !== "PvP" && selectedMode !== "Enfeksiyon") {
+                currentWave++; waveEnemiesLeft = 10 + (currentWave * 5); enemiesSpawnedInWave = 0;
+                let ann = document.getElementById("wave-announcement");
+                ann.innerText = `🌊 DALGA ${currentWave} BAŞLIYOR!`; ann.style.display = "block";
+                setTimeout(() => { ann.style.display = "none"; }, 3000);
+                updateUI();
+            }
+        }
+
+        function startSelectedGameMode(mode) { startGame(mode); }
+
+        function startGame(mode) {
+            selectedMode = mode || "Zombilere Karsi"; gameState = "PLAYING";
+            reviveRight = 3; outOfBoundsTimer = 600; isDowned = false; isZombified = false;
+            currentWave = 1; waveEnemiesLeft = 12; enemiesSpawnedInWave = 0;
+            document.getElementById("ad-count").innerText = reviveRight;
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("mode-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("downed-screen").style.display = "none";
+            showHUD(true);
+            player.x = 1750; player.y = 1750; player.health = 100; player.money = parseInt(localStorage.getItem("brawl_money")) || 50; player.score = 0;
+            player.inventory = ["Bıçak", "Katana", "Tabanca"]; addWeaponToInventory("Tabanca");
+            generateCrates(); enemies = []; bullets = []; explosions = []; turrets = [];
+            
+            let ann = document.getElementById("wave-announcement");
+            ann.innerText = selectedMode === "PvP" ? "⚔️ İNSANLAR VS İNSANLAR BAŞLADI!" : (selectedMode === "Boss" ? "👑 BOSSLAR VS İNSANLAR!" : (selectedMode === "Enfeksiyon" ? "☣️ ZOMBİYE DÖNÜŞÜM MODU BAŞLADI!" : "🧟 ZOMBİLERE KARŞI BAŞLADI!"));
+            ann.style.display = "block";
+            setTimeout(() => { ann.style.display = "none"; }, 3000);
+
+            updateUI(); startBGM();
+        }
+
+        function showHUD(v) {
+            let d = v ? "flex" : "none";
+            document.getElementById("hud").style.display = d;
+            document.getElementById("team-toggle-btn").style.display = d;
+            document.getElementById("shop-toggle-btn").style.display = d;
+            document.getElementById("chat-toggle-btn").style.display = d;
+            document.getElementById("ingame-menu-btn").style.display = d;
+            document.getElementById("pc-controls-info").style.display = !isMobileDevice && v ? "block" : "none";
+            let mobileBtns = isMobileDevice && v ? "flex" : "none";
+            document.getElementById("dash-btn").style.display = mobileBtns;
+            document.getElementById("reload-btn").style.display = mobileBtns;
+            document.getElementById("switch-weapon-btn").style.display = mobileBtns;
+            document.getElementById("build-btn").style.display = mobileBtns;
+            document.getElementById("fire-btn").style.display = mobileBtns;
+        }
+
+        function updateUI() {
+            document.getElementById("hud-health").innerText = isZombified ? `☣️ Can: ${Math.max(0, Math.floor(player.health))}` : `❤️ Can: ${Math.max(0, Math.floor(player.health))}`;
+            document.getElementById("hud-ammo").innerText = isZombified ? `📦 Pençe: Sınırsız` : ((player.weapon === "Bıçak" || player.weapon === "Katana") ? `📦 Mermi: Sınırsız` : `📦 Mermi: ${player.ammo}/${player.maxAmmo}`);
+            document.getElementById("hud-weapon").innerText = isZombified ? `🦠 Zombi Pençesi` : (player.weapon === "Bıçak" ? `🗡️ Bıçak` : (player.weapon === "Katana" ? `⚔️ Katana` : `🔫 ${player.weapon}`));
+            document.getElementById("hud-reserve").innerText = `🔋 Yedek: ${player.reserveAmmo}`;
+            document.getElementById("hud-money").innerText = `💵 Dolar: $${player.money}`;
+            document.getElementById("hud-score").innerText = `⭐ Skor: ${player.score}`;
+            document.getElementById("hud-wave").innerText = selectedMode === "Enfeksiyon" ? `☣️ Enfeksiyon` : (selectedMode === "PvP" ? `⚔️ PvP Modu` : `🌊 Dalga: ${currentWave}`);
+        }
+
+        function triggerDowned() {
+            if (selectedMode === "Enfeksiyon") {
+                if (!isZombified) {
+                    isZombified = true;
+                    player.health = 120;
+                    player.speed = 6.0;
+                    printConsole("⚠️ Öldün ve ZOMBİYE DÖNÜŞTÜN! Diğer zombiler dostun oldu! 🦠");
+                    updateUI();
+                } else {
+                    player.health = 120;
+                    player.x = 1750 + (Math.random() - 0.5) * 200;
+                    player.y = 1750 + (Math.random() - 0.5) * 200;
+                    printConsole("💀 Zombi olarak tekrar doğdun!");
+                    updateUI();
+                }
+                return;
+            }
+
+            if (!isMultiplayer || !friendPlayer.active) {
+                gameOver();
+                return;
+            }
+
+            isDowned = true;
+            downedTimer = 10;
+            document.getElementById("downed-screen").style.display = "flex";
+            if (downedInterval) clearInterval(downedInterval);
+            downedInterval = setInterval(() => {
+                downedTimer--;
+                document.getElementById("downed-timer-text").innerText = `Arkadaşının yeşil çemberine gelmesini bekle veya: ${downedTimer}sn`;
+                if (downedTimer <= 0) {
+                    clearInterval(downedInterval);
+                    document.getElementById("downed-screen").style.display = "none";
+                    gameOver();
+                }
+            }, 1000);
+        }
+
+        function gameOver() {
+            gameState = "GAMEOVER";
+            if (downedInterval) clearInterval(downedInterval);
+            saveScoreToLeaderboard(player.score);
+            document.getElementById("game-over").style.display = "flex";
+            showHUD(false); stopBGM();
+        }
+
+        let rescueProgress = 0;
+
+        function update() {
+            if (gameState !== "PLAYING" || isChatOpen) return;
+
+            if (isMultiplayer && conn && conn.open) {
+                conn.send({ 
+                    x: player.x, y: player.y, angle: player.angle, health: player.health, 
+                    score: player.score, name: playerName, color: playerColor, weapon: player.weapon, 
+                    isZombified: isZombified, isDowned: isDowned,
+                    enemies: isHost ? enemies : null, currentWave: isHost ? currentWave : null
+                });
+            }
+
+            if (isMultiplayer && friendPlayer.active && friendPlayer.isDowned) {
+                let distToFriend = Math.hypot(player.x - friendPlayer.x, player.y - friendPlayer.y);
+                if (distToFriend < 50) {
+                    rescueProgress += 0.035;
+                    if (rescueProgress >= 1.0) {
+                        rescueProgress = 0;
+                        if (isHost) {
+                            friendPlayer.health = 50; friendPlayer.isDowned = false;
+                        } else {
+                            conn.send({ reviveRequest: true });
+                        }
+                        printConsole("✨ Arkadaşın başarıyla kurtarıldı!");
+                    }
+                } else {
+                    if (rescueProgress > 0) rescueProgress -= 0.02;
+                }
+            } else {
+                rescueProgress = 0;
+            }
+
+            if (player.x < 0 || player.x > WORLD_WIDTH || player.y < 0 || player.y > WORLD_HEIGHT) {
+                outOfBoundsTimer--;
+                document.getElementById("out-warning").style.display = "block";
+                if (outOfBoundsTimer <= 0 && !isZombified) gameOver();
+            } else { outOfBoundsTimer = 600; document.getElementById("out-warning").style.display = "none"; }
+
+            if (player.dashCooldown > 0) player.dashCooldown--;
+
+            if (!isDowned) {
+                if (!isMobileDevice) {
+                    let dx = 0, dy = 0;
+                    if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
+                    if (dx !== 0 || dy !== 0) {
+                        let len = Math.hypot(dx, dy);
+                        player.moveAngle = Math.atan2(dy, dx);
+                        player.x += (dx / len) * player.speed; 
+                        player.y += (dy / len) * player.speed;
+                    }
+                    if (mouse.down) shoot();
+                } else {
+                    if (joystick.power > 0) {
+                        player.x += Math.cos(player.moveAngle) * player.speed * joystick.power;
+                        player.y += Math.sin(player.moveAngle) * player.speed * joystick.power;
+                    }
+                }
+            }
+
+            if (selectedMode === "Enfeksiyon" && isZombified && player.health <= 0) {
+                triggerDowned();
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i]; b.x += b.vx; b.y += b.vy;
+                if (b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) { bullets.splice(i, 1); continue; }
+                
+                if (friendPlayer.active) {
+                    if (Math.hypot(b.x - friendPlayer.x, b.y - friendPlayer.y) < friendPlayer.radius + b.radius) {
+                        bullets.splice(i, 1);
+                        playSound('hit');
+                        if (isMultiplayer && conn && conn.open) {
+                            conn.send({ hitPlayer: true, damage: b.damage * 10 });
+                        }
+                        continue;
+                    }
+                }
+
+                let hitCrate = false;
+                for (let c = crates.length - 1; c >= 0; c--) {
+                    let cr = crates[c];
+                    if (Math.hypot(b.x - cr.x, b.y - cr.y) < b.radius + cr.size/2) {
+                        cr.health--; bullets.splice(i, 1); hitCrate = true;
+                        if (cr.health <= 0) {
+                            crates.splice(c, 1); player.money += 25; player.score += 50;
+                            saveGameData();
+                            let weaponsList = ["Taramalı", "Pompalı", "Bazuka", "Katana"];
+                            let randomDrop = weaponsList[Math.floor(Math.random() * weaponsList.length)];
+                            addWeaponToInventory(randomDrop);
+                            printConsole(`🎁 Kutudan ${randomDrop} ve $25 Dolar çıktı!`);
+                            updateUI();
+                        }
+                        break;
+                    }
+                }
+                if (hitCrate) continue;
+
+                enemies.forEach((en, j) => {
+                    if (Math.hypot(b.x - en.x, b.y - en.y) < b.radius + en.radius) {
+                        en.health -= b.damage; bullets.splice(i, 1); playSound('hit');
+                        if (en.health <= 0) { 
+                            enemies.splice(j, 1); player.score += en.scoreVal; 
+                            if (Math.random() < 0.25) {
+                                let droppedMoney = Math.floor(Math.random() * 4) + 2;
+                                player.money += droppedMoney;
+                                saveGameData();
+                                printConsole(`💵 Zombiden +$${droppedMoney} düştü!`);
+                            }
+                            checkWaveProgress(); updateUI(); 
+                        }
+                    }
+                });
+            }
+
+            if (!isMultiplayer || isHost) {
+                enemies.forEach(en => {
+                    let targets = [];
+                    if (!isZombified && !isDowned) {
+                        targets.push({ x: player.x, y: player.y, isLocal: true });
+                    }
+                    if (friendPlayer.active && !friendPlayer.isZombified && !friendPlayer.isDowned) {
+                        targets.push({ x: friendPlayer.x, y: friendPlayer.y, isLocal: false });
+                    }
+
+                    if (targets.length > 0) {
+                        let closestTarget = targets[0];
+                        let minDistance = Math.hypot(targets[0].x - en.x, targets[0].y - en.y);
+
+                        for (let t = 1; t < targets.length; t++) {
+                            let dist = Math.hypot(targets[t].x - en.x, targets[t].y - en.y);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestTarget = targets[t];
+                            }
+                        }
+
+                        let dx = closestTarget.x - en.x, dy = closestTarget.y - en.y;
+                        if (minDistance > 1) { 
+                            en.x += (dx / minDistance) * en.speed; 
+                            en.y += (dy / minDistance) * en.speed; 
+                        }
+
+                        if (closestTarget.isLocal && minDistance < player.radius + en.radius && !isGodMode && !isDowned) {
+                            player.health -= en.damage; updateUI();
+                            if (en.type === 'bomber') { en.health = 0; }
+                            if (player.health <= 0) triggerDowned();
+                        }
+                    }
+                });
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (gameState === "MENU") return;
+
+            ctx.save();
+            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+
+            ctx.fillStyle = currentMap === 'cim' ? "#27ae60" : (currentMap === 'col' ? "#d35400" : "#2980b9");
+            ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+            ctx.strokeStyle = "#ff4757"; ctx.lineWidth = 10;
+            ctx.strokeRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+            crates.forEach(cr => {
+                ctx.fillStyle = "#8e44ad";
+                ctx.fillRect(cr.x - cr.size/2, cr.y - cr.size/2, cr.size, cr.size);
+                ctx.lineWidth = 3; ctx.strokeStyle = "#fff";
+                ctx.strokeRect(cr.x - cr.size/2, cr.y - cr.size/2, cr.size, cr.size);
+                ctx.fillStyle = "#fff"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
+                ctx.fillText("🎁 KUTU", cr.x, cr.y + 4);
+            });
+
+            enemies.forEach(en => {
+                ctx.beginPath(); ctx.arc(en.x, en.y, en.radius, 0, Math.PI*2);
+                ctx.fillStyle = en.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+                
+                let barW = en.radius * 2;
+                let hpPercent = Math.max(0, en.health / en.maxHealth);
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(en.x - barW/2, en.y - en.radius - 14, barW, 5);
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(en.x - barW/2, en.y - en.radius - 14, barW * hpPercent, 5);
+
+                ctx.fillStyle = "#fff"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
+                let label = en.type === 'runner' ? 'Koşucu' : (en.type === 'tank' ? 'Tank' : (en.type === 'bomber' ? 'Bomba' : 'Zombi'));
+                ctx.fillText(label, en.x, en.y - en.radius - 18);
+            });
+
+            if (friendPlayer.active) {
+                ctx.save();
+                ctx.translate(friendPlayer.x, friendPlayer.y); ctx.rotate(friendPlayer.angle);
+                
+                ctx.beginPath(); ctx.arc(0, 0, friendPlayer.radius, 0, Math.PI*2);
+                ctx.fillStyle = friendPlayer.isZombified ? "#8e44ad" : friendPlayer.color; 
+                ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(6, -14, 6, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.arc(6, 14, 6, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.stroke();
+
+                if (!friendPlayer.isZombified) {
+                    ctx.beginPath();
+                    ctx.moveTo(10, 0);
+                    ctx.lineTo(friendPlayer.weapon === "Katana" ? 38 : 26, 0);
+                    ctx.lineWidth = friendPlayer.weapon === "Katana" ? 6 : 4;
+                    ctx.strokeStyle = friendPlayer.weapon === "Katana" ? "#ecf0f1" : "#f1c40f";
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                if (friendPlayer.isDowned) {
+                    ctx.beginPath(); ctx.arc(friendPlayer.x, friendPlayer.y, 45, 0, Math.PI*2);
+                    ctx.strokeStyle = "rgba(46, 204, 113, 0.8)"; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.fillStyle = "rgba(46, 204, 113, 0.2)"; ctx.fill();
+
+                    if (rescueProgress > 0) {
+                        ctx.beginPath();
+                        ctx.arc(friendPlayer.x, friendPlayer.y, 45, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * rescueProgress));
+                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 6; ctx.stroke();
+                    }
+                }
+
+                ctx.fillStyle = "#fff"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+                ctx.fillText(friendPlayer.isDowned ? `${friendPlayer.name} (BAYILDI)` : friendPlayer.name, friendPlayer.x, friendPlayer.y - friendPlayer.radius - 8);
+            }
+
+            bullets.forEach(b => {
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius + 2, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(241, 196, 15, 0.4)"; ctx.fill();
+                
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fillStyle = "#f1c40f"; ctx.fill();
+                ctx.lineWidth = 1; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+            });
+
+            ctx.save();
+            ctx.translate(player.x, player.y); ctx.rotate(player.angle);
+            
+            ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI*2); 
+            ctx.fillStyle = isZombified ? "#8e44ad" : playerColor; 
+            ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = isZombified ? "#e74c3c" : (clanJoined ? "#2ecc71" : "#ffffff"); ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(6, -14, 6, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(6, 14, 6, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.stroke();
+
+            if (!isZombified) {
+                ctx.beginPath();
+                ctx.moveTo(10, 0);
+                ctx.lineTo(player.weapon === "Katana" ? 38 : 26, 0);
+                ctx.lineWidth = player.weapon === "Katana" ? 6 : 4;
+                ctx.strokeStyle = player.weapon === "Katana" ? "#ecf0f1" : "#f1c40f";
+                ctx.stroke();
+            }
+
+            ctx.restore();
+
+            let displayMyName = isZombified ? `🦠 [ZOMBİ] ${playerName}` : (clanJoined ? `[${clanName}] ${playerName}` : playerName);
+            ctx.fillStyle = isZombified ? "#e74c3c" : "#fff"; 
+            ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+            ctx.fillText(displayMyName, player.x, player.y - player.radius - 8);
+
+            ctx.restore();
+
+            if (joystick.active) {
+                ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, 45, 0, Math.PI*2); 
+                ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.beginPath(); ctx.arc(joystick.touchX, joystick.touchY, 20, 0, Math.PI*2); 
+                ctx.fillStyle = "rgba(0,210,211,0.8)"; ctx.fill();
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
