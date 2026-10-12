@@ -438,8 +438,8 @@
         let isZombified = false;
         let currentLang = localStorage.getItem("brawl_lang") || 'tr';
 
-        // Socket.io Sunucu Bağlantısı (StackBlitz Bulut Adresinize Bağlandı)
-        const socket = io("https://stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io", { autoConnect: true });
+        // Socket.io Sunucu Bağlantısı (Yeni WebContainer Adresinizle Güncellendi)
+        const socket = io("https://webcontainer.io", { autoConnect: true });
         let liveServerRooms = [];
         let lastAdTime = 0;
 
@@ -600,7 +600,14 @@
             activeRoomId = roomId;
             isMultiplayer = true; isHost = true;
             if (peer) peer.destroy();
-            peer = new Peer(roomId);
+            
+            // PeerJS Sunucu Bağlantısı (Yeni WebContainer Adresiniz ve Host Ayarları ile Güncellendi)
+            peer = new Peer(roomId, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
+            });
 
             peer.on('open', (id) => {
                 myPeerId = id;
@@ -622,7 +629,14 @@
             isMultiplayer = true; isHost = false;
             socket.emit('join-room', roomId);
             if (peer) peer.destroy();
-            peer = new Peer();
+            
+            // PeerJS Bağlantısı (Yeni WebContainer Adresiniz ve Host Ayarları ile Güncellendi)
+            peer = new Peer(undefined, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
+            });
 
             peer.on('open', (id) => {
                 conn = peer.connect(roomId);
@@ -669,7 +683,15 @@
             activeRoomId = fullCode;
             isMultiplayer = true; isHost = true;
             if (peer) peer.destroy();
-            peer = new Peer(fullCode);
+            
+            // PeerJS Oda Kurulumu (Yeni WebContainer Adresiniz ve Host Ayarları ile Güncellendi)
+            peer = new Peer(fullCode, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
+            });
+
             peer.on('open', (id) => {
                 myPeerId = id;
                 registerLiveServer(id, `${playerName}'in Odası (${code})`, "Zombilere Karsi");
