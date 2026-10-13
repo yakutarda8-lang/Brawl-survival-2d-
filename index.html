@@ -208,6 +208,12 @@
             background: rgba(0, 0, 0, 0.95); color: white; display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 2000; pointer-events: auto !important;
         }
+
+        #auto-ad-popup {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); color: white; display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 3000; pointer-events: auto !important;
+        }
     </style>
 </head>
 <body>
@@ -398,7 +404,7 @@
         <p id="downed-timer-text">Arkadaşının yeşil çemberine gelip seni kurtarmasını bekle: 10sn</p>
     </div>
 
-    <!-- REKLAM MODALI -->
+    <!-- REKLAM MODALI (ÖLÜNCE CANLANMA İÇİN) -->
     <div id="ad-modal">
         <h1 style="color: #f1c40f; font-size: 24px;">📺 REKLAM OYNATILIYOR</h1>
         <p id="ad-timer-text" style="font-size: 16px; margin: 15px 0;">Lütfen reklamın bitmesini bekleyin: 5sn</p>
@@ -407,6 +413,16 @@
             <div id="ad-script-slot"></div>
         </div>
         <button id="skip-ad-btn" class="menu-btn sec" style="background: #e74c3c; cursor: not-allowed; opacity: 0.6;" disabled>REKLAMI GEÇ (Bekleniyor...)</button>
+    </div>
+
+    <!-- 10 DAKİKADA BİR MENÜDE ÇIKAN OTOMATİK ADSTERRA REKLAM POPUP'I -->
+    <div id="auto-ad-popup">
+        <h1 style="color: #f1c40f; font-size: 22px;">📢 SPONSORLU REKLAM</h1>
+        <p style="font-size: 13px; margin: 10px 0;">Destek olmak için reklamı inceleyebilirsin.</p>
+        <div style="width: 320px; height: 200px; background: #222; border: 2px solid #00d2d3; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin-bottom: 15px; overflow: hidden;">
+            <div id="auto-ad-script-slot"></div>
+        </div>
+        <button class="menu-btn sec" style="background: #27ae60;" onclick="closeAutoAdPopup()">REKLAMI KAPA & DEVAM ET</button>
     </div>
 
     <div id="game-over" class="ui-panel" style="display: none;">
@@ -418,6 +434,9 @@
         <button class="menu-btn" id="go-btn-restart" onclick="showModeSelect()">🔄 Yeniden Başla</button>
         <button class="menu-btn sec" id="go-btn-menu" onclick="showMainMenu()">🏠 Ana Menü</button>
     </div>
+
+    <!-- Adsterra Genel Reklam Scripti -->
+    <script data-cfasync="false" src="https://abscloud.org/1/57a5f03e13313e5cac3634aafb016fc0"></script>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -442,6 +461,31 @@
         const socket = io("https://stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io", { autoConnect: true });
         let liveServerRooms = [];
         let lastAdTime = 0;
+
+        // 10 Dakikada bir menüde otomatik reklam gösterme döngüsü
+        setInterval(() => {
+            if (gameState === "MENU") {
+                triggerAutoMenuAd();
+            }
+        }, 10 * 60 * 1000);
+
+        function triggerAutoMenuAd() {
+            let popup = document.getElementById("auto-ad-popup");
+            let slot = document.getElementById("auto-ad-script-slot");
+            slot.innerHTML = '';
+            try {
+                let s = document.createElement('script');
+                s.setAttribute('data-cfasync', 'false');
+                s.src = 'https://abscloud.org/1/57a5f03e13313e5cac3634aafb016fc0';
+                slot.appendChild(s);
+            } catch(e) {}
+            popup.style.display = "flex";
+        }
+
+        function closeAutoAdPopup() {
+            document.getElementById("auto-ad-popup").style.display = "none";
+            document.getElementById("auto-ad-script-slot").innerHTML = '';
+        }
 
         socket.on('room-list', (rooms) => {
             liveServerRooms = rooms;
@@ -722,7 +766,11 @@
             element.classList.add('selected'); saveGameData();
         }
 
-        function openShopMenu() { document.getElementById("shop-menu").style.display = "flex"; document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`; }
+        function openShopMenu() { 
+            player.money = parseInt(localStorage.getItem("brawl_money")) || player.money;
+            document.getElementById("shop-menu").style.display = "flex"; 
+            document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`; 
+        }
         function closeShopMenu() { document.getElementById("shop-menu").style.display = "none"; }
 
         function playErrorSound() {
@@ -736,11 +784,12 @@
         }
 
         function buySkin(skinName, hexColor, price) {
+            player.money = parseInt(localStorage.getItem("brawl_money")) || player.money;
             if (player.money >= price) {
                 player.money -= price; playerColor = hexColor; currentSkin = skinName;
                 saveGameData(); alert(`${skinName} skini alındı! 🎉`); updateUI();
                 document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`;
-            } else { playErrorSound(); }
+            } else { playErrorSound(); alert("Yeterli doların yok!"); }
         }
 
         function toggleChatWindow() {
@@ -1113,6 +1162,7 @@
         document.getElementById("switch-weapon-btn").addEventListener("touchstart", (e) => { e.preventDefault(); if (gameState === "PLAYING" && !isZombified) cycleInventoryWeapon(); });
         document.getElementById("build-btn").addEventListener("touchstart", (e) => {
             e.preventDefault();
+            player.money = parseInt(localStorage.getItem("brawl_money")) || player.money;
             if (gameState === "PLAYING" && player.money >= 120 && !isZombified) {
                 player.money -= 120; saveGameData();
                 turrets.push({ x: player.x + Math.cos(player.angle) * 50, y: player.y + Math.sin(player.angle) * 50, range: 300, health: 15, maxHealth: 15, lastShootTime: 0 });
@@ -1165,7 +1215,12 @@
                         en.health -= damage; playSound('hit');
                         if (en.health <= 0) { 
                             enemies.splice(idx, 1); player.score += en.scoreVal; 
-                            if (Math.random() < 0.25) { let m = Math.floor(Math.random() * 4) + 2; player.money += m; saveGameData(); printConsole(`💵 +$${m} düştü!`); }
+                            if (Math.random() < 0.25) { 
+                                let m = Math.floor(Math.random() * 4) + 2; 
+                                player.money = (parseInt(localStorage.getItem("brawl_money")) || player.money) + m; 
+                                saveGameData(); 
+                                printConsole(`💵 +$${m} düştü!`); 
+                            }
                             checkWaveProgress(); updateUI(); 
                         }
                     }
@@ -1176,7 +1231,10 @@
                         cr.health -= 1;
                         if (cr.health <= 0) {
                             let dropType = Math.random();
-                            if (dropType < 0.3) lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: Math.floor(Math.random() * 20) + 10 });
+                            if (dropType < 0.3) {
+                                let valM = Math.floor(Math.random() * 20) + 10;
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: valM });
+                            }
                             else if (dropType < 0.8) {
                                 let wList = ["Katana", "Taramalı", "Pompalı", "Bazuka"];
                                 let pickedW = wList[Math.floor(Math.random() * wList.length)];
@@ -1251,7 +1309,9 @@
             document.getElementById("game-over").style.display = "none";
             document.getElementById("downed-screen").style.display = "none";
             showHUD(true);
-            player.x = 1750; player.y = 1750; player.health = 100; player.maxHealth = isZombified ? 150 : 100; player.money = parseInt(localStorage.getItem("brawl_money")) || 50; player.score = 0;
+            player.x = 1750; player.y = 1750; player.health = 100; player.maxHealth = isZombified ? 150 : 100; 
+            player.money = parseInt(localStorage.getItem("brawl_money")) || 50; 
+            player.score = 0;
             player.inventory = ["Bıçak", "Katana", "Tabanca"]; addWeaponToInventory("Tabanca");
             generateCrates(); enemies = []; bullets = []; explosions = []; turrets = [];
             updateUI(); startBGM();
@@ -1273,6 +1333,7 @@
         }
 
         function updateUI() {
+            player.money = parseInt(localStorage.getItem("brawl_money")) || player.money;
             player.maxHealth = isZombified ? 150 : 100;
             let currentH = Math.max(0, Math.floor(player.health));
             let percent = Math.max(0, Math.min(100, (player.health / player.maxHealth) * 100));
@@ -1348,7 +1409,9 @@
                 let l = lootDrops[i];
                 if (Math.hypot(player.x - l.x, player.y - l.y) < player.radius + 15) {
                     if (l.type === 'money') {
-                        player.money += l.val; saveGameData(); printConsole(`💵 +$${l.val} Para Bulundu!`);
+                        player.money = (parseInt(localStorage.getItem("brawl_money")) || player.money) + l.val; 
+                        saveGameData(); 
+                        printConsole(`💵 +$${l.val} Para Bulundu!`);
                     } else if (l.type === 'weapon') {
                         addWeaponToInventory(l.val); printConsole(`🎁 Silah Bulundu: ${l.val}`);
                     } else if (l.type === 'health') {
@@ -1407,7 +1470,10 @@
                         bulletRemoved = true;
                         if (cr.health <= 0) {
                             let dropType = Math.random();
-                            if (dropType < 0.3) lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: Math.floor(Math.random() * 20) + 10 });
+                            if (dropType < 0.3) {
+                                let valM = Math.floor(Math.random() * 20) + 10;
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: valM });
+                            }
                             else if (dropType < 0.8) {
                                 let wList = ["Katana", "Taramalı", "Pompalı", "Bazuka"];
                                 let pickedW = wList[Math.floor(Math.random() * wList.length)];
@@ -1438,7 +1504,11 @@
                         bullets.splice(i, 1); playSound('hit');
                         if (en.health <= 0) { 
                             enemies.splice(j, 1); player.score += en.scoreVal; 
-                            if (Math.random() < 0.25) { let m = Math.floor(Math.random() * 4) + 2; player.money += m; saveGameData(); }
+                            if (Math.random() < 0.25) { 
+                                let m = Math.floor(Math.random() * 4) + 2; 
+                                player.money = (parseInt(localStorage.getItem("brawl_money")) || player.money) + m; 
+                                saveGameData(); 
+                            }
                             checkWaveProgress(); updateUI(); 
                         }
                         bulletRemoved = true;
@@ -1551,7 +1621,7 @@
                 ctx.fillStyle = "rgba(46, 204, 113, 0.2)"; ctx.fill();
                 if (rescueProgress > 0) {
                     ctx.beginPath(); ctx.arc(player.x, player.y, 45, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * rescueProgress));
-                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth, 6; ctx.stroke();
+                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 6; ctx.stroke();
                 }
             }
 
