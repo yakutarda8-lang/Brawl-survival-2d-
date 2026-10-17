@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zombs Defense 2D - Multiplayer Real Base</title>
+    <title>Brawl Survival 2D - Ultimate Multiplayer</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
@@ -12,7 +12,9 @@
             width: 100vw; height: 100vh;
             overflow: hidden; background-color: #121824;
             font-family: Arial, sans-serif; user-select: none;
-            -webkit-user-select: none; touch-action: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: crosshair;
         }
         canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: block; z-index: 1; }
         
@@ -20,11 +22,92 @@
             position: absolute; top: 10px; left: 10px;
             color: white; font-weight: bold; font-size: 11px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none; display: flex; gap: 6px; z-index: 10; flex-wrap: wrap; align-items: center;
+            pointer-events: none; display: flex; gap: 5px; z-index: 10; flex-wrap: wrap; align-items: center;
         }
         .stat-badge {
-            background: rgba(0, 0, 0, 0.75); padding: 6px 10px;
-            border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.7); padding: 5px 8px;
+            border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .health-bar-container {
+            width: 110px; height: 16px; background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 8px; overflow: hidden;
+            display: inline-block; vertical-align: middle; position: relative;
+        }
+        .health-bar-fill {
+            height: 100%; width: 100%; background: #2ecc71; transition: width 0.1s linear, background-color 0.2s;
+        }
+        .health-bar-text {
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: bold; color: white; text-shadow: 1px 1px 2px #000;
+        }
+
+        #team-toggle-btn {
+            position: absolute; top: 10px; right: 280px;
+            background: rgba(46, 204, 113, 0.85); border: 2px solid white;
+            color: white; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #team-toggle-btn:active { transform: scale(0.92); }
+        #team-toggle-btn.teamed { background: rgba(231, 76, 60, 0.85); }
+
+        #shop-toggle-btn {
+            position: absolute; top: 10px; right: 185px;
+            background: rgba(46, 204, 113, 0.9); border: 2px solid white;
+            color: #ffffff; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #shop-toggle-btn:active { transform: scale(0.92); }
+
+        #chat-toggle-btn {
+            position: absolute; top: 10px; right: 90px;
+            background: rgba(52, 152, 219, 0.9); border: 2px solid white;
+            color: white; font-weight: bold; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #chat-toggle-btn:active { transform: scale(0.92); }
+
+        #out-warning, #reload-warning, #wave-announcement {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            color: white; padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 16px;
+            border: 2px solid #ffffff; display: none; z-index: 30; text-align: center;
+            pointer-events: none;
+        }
+        #out-warning { top: 70px; background: rgba(231, 76, 60, 0.9); box-shadow: 0 0 15px rgba(231, 76, 60, 0.8); }
+        #reload-warning { top: 130px; background: rgba(241, 196, 15, 0.9); color: #121824; }
+        #wave-announcement { top: 180px; background: rgba(155, 89, 182, 0.95); font-size: 20px; box-shadow: 0 0 20px rgba(155, 89, 182, 0.8); }
+
+        #chat-container {
+            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            width: 340px; height: 160px;
+            background: rgba(0, 0, 0, 0.9); border: 2px solid #3498db;
+            border-radius: 10px; display: none; flex-direction: column; z-index: 150; padding: 8px;
+            pointer-events: auto !important; box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+        }
+        #chat-messages {
+            flex: 1; overflow-y: auto; font-size: 11px; color: #fff; display: flex; flex-direction: column; gap: 4px;
+            margin-bottom: 6px; text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+        }
+        .chat-msg { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; word-break: break-all; }
+        .chat-system { color: #f1c40f; font-weight: bold; }
+        #chat-input-row { display: flex; gap: 4px; }
+        #chat-input {
+            flex: 1; background: rgba(0,0,0,0.9); border: 1px solid #3498db; border-radius: 4px;
+            color: white; padding: 5px 8px; font-size: 11px; outline: none;
+        }
+        #chat-send-btn {
+            background: #3498db; border: none; color: white; font-weight: bold; padding: 5px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+
+        #danger-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; border: 8px solid rgba(231, 76, 60, 0);
+            transition: border-color 0.3s ease; z-index: 25;
         }
 
         .game-btn {
@@ -32,399 +115,1362 @@
             display: flex; justify-content: center; align-items: center;
             color: white; font-weight: bold; text-align: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; z-index: 100; border: 3px solid #ffffff;
-            pointer-events: auto !important; touch-action: none; font-size: 11px;
+            pointer-events: auto !important; touch-action: none;
         }
         .game-btn:active { transform: scale(0.92); }
 
-        #build-wall-btn { bottom: 110px; right: 30px; width: 75px; height: 75px; background: rgba(230, 126, 34, 0.9); }
-        #build-turret-btn { bottom: 190px; right: 30px; width: 75px; height: 75px; background: rgba(155, 89, 182, 0.9); }
-        #fire-btn { bottom: 20px; right: 30px; width: 85px; height: 85px; background: rgba(220, 38, 38, 0.9); border-width: 4px; }
+        #dash-btn { bottom: 30px; left: 30px; width: 70px; height: 70px; background: rgba(155, 89, 182, 0.9); font-size: 10px; }
+        #reload-btn { bottom: 110px; left: 30px; width: 70px; height: 70px; background: rgba(52, 152, 219, 0.9); font-size: 10px; }
+        #switch-weapon-btn { bottom: 190px; left: 30px; width: 70px; height: 70px; background: rgba(230, 126, 34, 0.9); font-size: 10px; }
+        #build-btn { bottom: 120px; right: 30px; width: 75px; height: 75px; background: rgba(46, 204, 113, 0.9); font-size: 10px; }
+        
+        #fire-btn { bottom: 30px; right: 30px; width: 95px; height: 95px; background: rgba(220, 38, 38, 0.9); font-size: 13px; border-width: 4px; flex-direction: column; }
+        #fire-btn span { font-size: 9px; opacity: 0.8; margin-top: 2px; }
+        
+        #ingame-menu-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(231, 76, 60, 0.9); border: 2px solid white;
+            color: white; font-weight: bold; padding: 8px 12px; border-radius: 8px;
+            cursor: pointer; z-index: 100; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: auto !important; display: none;
+        }
+        #ingame-menu-btn:active { transform: scale(0.92); }
 
         .ui-panel {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(18, 24, 36, 0.98); display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            color: white; z-index: 1000; padding: 20px; text-align: center;
-            overflow-y: auto;
+            flex-direction: column; justify-content: flex-start; align-items: center;
+            color: white; z-index: 1000; font-family: Arial, sans-serif; padding: 25px 15px; text-align: center;
+            pointer-events: auto !important;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
+        .ui-panel h1 { font-size: 26px; color: #00d2d3; margin: 10px 0 6px 0; }
+        .ui-panel p { font-size: 13px; margin-bottom: 12px; color: #dcdde1; }
+
         .menu-btn {
             background: #00d2d3; border: none; padding: 12px 20px; margin: 6px;
             color: #121824; font-size: 14px; font-weight: bold; border-radius: 8px;
-            cursor: pointer; width: 260px; flex-shrink: 0;
+            cursor: pointer; width: 250px; z-index: 1001; pointer-events: auto !important;
+            touch-action: manipulation; flex-shrink: 0;
         }
         .menu-btn:active { transform: scale(0.95); }
         .menu-btn.sec { background: #576574; color: white; }
+        .menu-btn.mode { background: #9b59b6; color: white; }
+        .menu-btn.map { background: #e67e22; color: white; }
+        .menu-btn.ad { background: #f1c40f; color: #121824; font-weight: bold; }
+        .menu-btn.rank { background: #27ae60; color: white; }
+        .menu-btn.profile { background: #3498db; color: white; }
         .menu-btn.server { background: #e84118; color: white; }
-        
+        .menu-btn.char { background: #2ecc71; color: white; }
+        .menu-btn.shop { background: #27ae60; color: white; }
+        .menu-btn.lang { background: #1abc9c; color: white; }
+        .menu-btn.auth { background: #9b59b6; color: white; }
+
         .room-input {
             padding: 10px; font-size: 16px; border-radius: 6px; border: 2px solid #00d2d3;
             background: rgba(0,0,0,0.5); color: white; text-align: center; margin-bottom: 8px; width: 220px;
+            pointer-events: auto !important; z-index: 1001; flex-shrink: 0;
         }
 
-        .server-table {
-            width: 100%; max-width: 340px; background: rgba(0,0,0,0.5);
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
-            max-height: 180px; overflow-y: auto; margin: 10px 0;
+        .color-picker-container {
+            display: flex; gap: 10px; margin: 10px 0; justify-content: center; flex-wrap: wrap;
         }
-        .server-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 12px;
+        .color-box {
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        .color-box.selected { border-color: #fff; transform: scale(1.1); }
+
+        .tab-container { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { background: #34495e; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .tab-btn.active { background: #00d2d3; color: #121824; }
+
+        .leaderboard-table {
+            width: 100%; max-width: 360px; background: rgba(0,0,0,0.6);
+            border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2);
+            overflow: hidden; min-height: 140px; display: flex; flex-direction: column; justify-content: flex-start;
+            pointer-events: auto !important; max-height: 220px; overflow-y: auto; flex-shrink: 0;
+        }
+        .leaderboard-row {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px;
+        }
+        .leaderboard-row:nth-child(even) { background: rgba(255,255,255,0.05); }
+
+        #pc-controls-info {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.6); font-size: 11px; text-align: center; pointer-events: none; z-index: 5;
+            display: none;
+        }
+
+        #ad-modal {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95); color: white; display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 2000; pointer-events: auto !important;
         }
     </style>
 </head>
 <body>
 
+    <div id="danger-overlay"></div>
+
     <div id="hud" style="display: none;">
-        <div class="stat-badge" style="color:#e74c3c;">🏠 Ev Canı: <span id="house-hp">500/500</span></div>
-        <div class="stat-badge" style="color:#2ecc71;">❤️ Can: <span id="player-hp">100/100</span></div>
-        <div class="stat-badge" style="color:#f1c40f;">💵 Altın: $<span id="gold-val">100</span></div>
-        <div class="stat-badge" style="color:#3498db;">🌊 Dalga: <span id="wave-val">1</span></div>
+        <div class="stat-badge" id="hud-health-badge">
+            ❤️ Can: 
+            <div class="health-bar-container">
+                <div class="health-bar-fill" id="hud-health-fill" style="width: 100%;"></div>
+                <div class="health-bar-text" id="hud-health-text">100/100</div>
+            </div>
+        </div>
+        <div class="stat-badge" id="hud-ammo">📦 Mermi: 12/12</div>
+        <div class="stat-badge" id="hud-weapon" style="color: #f1c40f;">🗡️ Bıçak</div>
+        <div class="stat-badge" id="hud-reserve">🔋 Yedek: -</div>
+        <div class="stat-badge" id="hud-money" style="color: #2ecc71;">💵 Dolar: $50</div>
+        <div class="stat-badge" id="hud-score">⭐ Skor: 0</div>
+        <div class="stat-badge" id="hud-wave" style="color: #f1c40f;">🌊 Dalga: 1</div>
+        <div class="stat-badge" id="hud-mode" style="color: #9b59b6;">🎮 Klasik</div>
     </div>
 
-    <div id="build-wall-btn" class="game-btn" style="display: none;" onclick="buildWall()">🧱 ÇİT<br>($20)</div>
-    <div id="build-turret-btn" class="game-btn" style="display: none;" onclick="buildTurret()">🏹 TARET<br>($60)</div>
-    <div id="fire-btn" class="game-btn" style="display: none;">ATEŞ</div>
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <div id="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Sohbet yaz..." maxlength="50" onkeydown="handleChatKey(event)">
+            <button id="chat-send-btn" onclick="sendChatMessage()">GÖNDER</button>
+        </div>
+    </div>
+
+    <button id="team-toggle-btn" onclick="requestClanJoin()">🛡️ KLANA KATIL</button>
+    <button id="shop-toggle-btn" onclick="openShopMenu()">🛒 MAĞAZA ($)</button>
+    <button id="chat-toggle-btn" onclick="toggleChatWindow()">💬 SOHBET</button>
+    <button id="ingame-menu-btn" onclick="showMainMenu()">🏠 ANA MENÜ</button>
+
+    <div id="pc-controls-info">PC Kontrolleri: WASD = Hareket | Mouse = Nişan Al | Sol Tık = Ateş Et | R = Şarjör | E = Silah Değiştir | Boşluk = Dash | Enter = Sohbet</div>
+
+    <div id="out-warning">⚠️ HARİTA DIŞINDASIN!<br><span id="out-timer">10</span>sn İÇİNDE DÖN!</div>
+    <div id="reload-warning">🔄 ŞARJÖR YENİLENİYOR...</div>
+    <div id="wave-announcement">🌊 DALGA 1 BAŞLIYOR!</div>
+
+    <div id="dash-btn" class="game-btn" style="display: none;">DASH</div>
+    <div id="reload-btn" class="game-btn" style="display: none;">ŞARJÖR<br>YENİLE</div>
+    <div id="switch-weapon-btn" class="game-btn" style="display: none;">SİLAH<br>DEĞİŞ</div>
+    <div id="build-btn" class="game-btn" style="display: none;">TARET<br>($120)</div>
+    <div id="fire-btn" class="game-btn" style="display: none;">ATEŞ<br><span>(Sürükle & Nişan Al)</span></div>
 
     <canvas id="gameCanvas"></canvas>
 
     <!-- ANA MENÜ -->
     <div id="main-menu" class="ui-panel">
-        <h1 style="color:#f1c40f; margin-bottom:8px;">🏰 ZOMBS BASE DEFENSE</h1>
-        <p style="margin-bottom:15px; color:#aaa; font-size: 13px;">Evini zombilere karşı koru ve arkadaşlarınla birlikte savaş!</p>
+        <h1 id="txt-title">BRAWL SURVIVAL 2D</h1>
+        <p id="txt-subtitle">Ultimate Multiplayer Sürüm</p>
         
-        <button class="menu-btn" onclick="startSingleplayer()">🎮 TEK BAŞINA OYNA</button>
-        <button class="menu-btn server" onclick="showPublicServers()">🌍 GENEL SUNUCULAR (CANLI ODA SEÇ)</button>
-        <button class="menu-btn" style="background:#e67e22; color:white;" onclick="showMultiplayerMenu()">🤝 ÖZEL ODA (KODLA GİR)</button>
+        <button class="menu-btn rotate" style="background:#f39c12; color:white;" onclick="toggleFullScreen()">📱 TAM EKRAN (TELEFON UYUMLU)</button>
+        <button class="menu-btn rotate" onclick="enableLandscape()">🔄 YATAY ÇEVİR</button>
+        <button class="menu-btn auth" id="btn-auth" onclick="showAuthMenu()">🔑 HESAP GİRİŞİ / KAYIT</button>
+        <button class="menu-btn" id="btn-play" onclick="initAudioAndShowModes()">🎮 TEKLİ OYNA (MOD SEÇ)</button>
+        <button class="menu-btn server" id="btn-host-join" onclick="initAudioAndShowHostJoin()">🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)</button>
+        <button class="menu-btn server" id="btn-public-servers" style="background:#2980b9;" onclick="initAudioAndShowServers()">🌍 GENEL SUNUCULAR (CANLI LİSTE)</button>
+        <button class="menu-btn shop" id="btn-shop" onclick="openShopMenu()">🛒 SKİN MAĞAZASI ($)</button>
+        <button class="menu-btn map" id="btn-map" onclick="showMapMenu()">🗺️ HARİTA SEÇİ</button>
+        <button class="menu-btn char" id="btn-char" onclick="showCharacterMenu()">🎨 RENK SEÇİMİ</button>
+        <button class="menu-btn profile" id="btn-profile" onclick="showProfileMenu()">👤 PROFİL</button>
+        <button class="menu-btn rank" id="btn-rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn lang" id="btn-lang" onclick="showLanguageMenu()">🌐 DİL / LANGUAGE</button>
     </div>
 
-    <!-- GENEL SUNUCULAR -->
-    <div id="servers-menu" class="ui-panel" style="display: none;">
-        <h2>🌍 CANLI GENEL SUNUCULAR</h2>
-        <p style="font-size: 12px; color: #ccc;">Aşağıda açılmış aktif odaları görebilirsin.</p>
+    <div id="auth-menu" class="ui-panel" style="display: none;">
+        <h1 id="auth-title">🔑 HESAP GİRİŞİ / KAYIT</h1>
+        <p id="auth-desc">Kullanıcı adı ve şifrenle giriş yap veya yeni hesap oluştur!</p>
+        <input type="text" id="auth-username-input" class="room-input" placeholder="Kullanıcı Adı..." maxlength="12">
+        <input type="password" id="auth-password-input" class="room-input" placeholder="Şifre..." maxlength="20">
+        <button class="menu-btn auth" id="auth-btn-login" onclick="loginAccount()">GİRİŞ YAP</button>
+        <button class="menu-btn mode" id="auth-btn-register" onclick="registerAccount()">YENİ HESAP OLUŞTUR</button>
+        <button class="menu-btn sec" id="auth-btn-back" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="language-menu" class="ui-panel" style="display: none;">
+        <h1>🌐 DİL SEÇİMİ / LANGUAGE</h1>
+        <p>Oyun dilini seçin / Select game language</p>
+        <button class="menu-btn lang" onclick="setLanguage('tr')">🇹🇷 Türkçe</button>
+        <button class="menu-btn lang" onclick="setLanguage('en')">🇬🇧 English</button>
+        <button class="menu-btn sec" onclick="showMainMenu()">GERİ / BACK</button>
+    </div>
+
+    <div id="host-join-menu" class="ui-panel" style="display: none;">
+        <h1 id="txt-hostjoin">🤝 ARKADAŞLA OYNA</h1>
+        <p id="txt-hostjoin-desc">Oda kurarak arkadaşını davet et ya da kodla katıl!</p>
         
-        <div class="server-table" id="server-list-box">
-            <div class="server-row" style="color:#aaa;">Sunucular yükleniyor...</div>
+        <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 280px;">
+            <p id="txt-host-title" style="color: #f1c40f; font-weight: bold; margin-bottom: 5px;">🏠 ODA KUR (HOST OL)</p>
+            <input type="text" id="host-room-code-input" class="room-input" placeholder="Oda Kodunu Yaz..." maxlength="15">
+            <button class="menu-btn server" id="btn-host-action" style="width: 100%; margin: 0;" onclick="hostCustomRoomCode()">ODA KUR & OYNA</button>
         </div>
 
-        <button class="menu-btn server" onclick="createNewPublicServer()">➕ YENİ GENEL SUNUCU KUR</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ DÖN</button>
+        <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 15px; width: 280px;">
+            <p id="txt-join-title" style="color: #3498db; font-weight: bold; margin-bottom: 5px;">🔗 ODAYA KATIL</p>
+            <input type="text" id="join-room-code-input" class="room-input" placeholder="Arkadaşın Kodunu Yaz..." maxlength="15">
+            <button class="menu-btn mode" id="btn-join-action" style="width: 100%; margin: 0;" onclick="joinCustomRoomCode()">ODAYA BAĞLAN</button>
+        </div>
+
+        <button class="menu-btn sec" id="host-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
-    <!-- ÖZEL ODA MENÜSÜ -->
-    <div id="multi-menu" class="ui-panel" style="display: none;">
-        <h2>🤝 ÖZEL KODLU ODA</h2>
-        <input type="text" id="room-code-input" class="room-input" placeholder="Oda Kodu..." maxlength="12">
-        <button class="menu-btn" onclick="hostPrivateRoom()">🏠 ODA KUR (HOST OL)</button>
-        <button class="menu-btn" style="background:#3498db; color:white;" onclick="joinPrivateRoom()">🔗 ODAYA KATIL</button>
-        <button class="menu-btn sec" onclick="showMainMenu()">GERİ DÖN</button>
+    <div id="public-servers-menu" class="ui-panel" style="display: none;">
+        <h1 id="server-title">🌍 CANLI GENEL SUNUCULAR</h1>
+        <p id="server-desc">Aşağıda sunucuda açılmış canlı odaları görebilirsin. İstersen sen de yeni bir sunucu kur!</p>
+        <button class="menu-btn server" id="server-btn-create" onclick="showCreateServerDialog()">➕ YENİ SUNUCU KUR</button>
+        <button class="menu-btn sec" id="server-btn-refresh" style="background:#3498db; width: 180px; padding: 8px; margin-bottom: 10px;" onclick="refreshServerList()">🔄 LİSTEYİ YENİLE</button>
+        <div id="server-list-header" style="font-weight:bold; color:#f1c40f; margin: 5px 0 5px 0;">--- AÇIK CANLI SUNUCULAR ---</div>
+        <div class="leaderboard-table" id="server-list-container"></div>
+        <button class="menu-btn sec" id="server-btn-back" onclick="showMainMenu()">GERİ</button>
     </div>
 
-    <!-- OYUN BİTTİ -->
+    <div id="shop-menu" class="ui-panel" style="display: none;">
+        <h1 id="shop-title">🛒 SKİN MAĞAZASI ($)</h1>
+        <p id="shop-money-text">Doların: 💵 $50</p>
+        <div id="shop-sub-title" style="font-weight:bold; color:#2ecc71; margin: 10px 0 5px 0;">--- ÖZEL SKİNLER ---</div>
+        <button class="menu-btn shop" onclick="buySkin('Cyberpunk', '#ff007f', 150)">🤖 Cyberpunk (Pembe Neon) - $150</button>
+        <button class="menu-btn shop" onclick="buySkin('Altın Kral', '#ffd700', 300)">👑 Altın Kral (Parıl Parıl) - $300</button>
+        <button class="menu-btn shop" onclick="buySkin('Gölge Ninja', '#2f3640', 250)">🥷 Gölge Ninja (Koyu) - $250</button>
+        <button class="menu-btn shop" onclick="buySkin('Cehennem Alevi', '#ff4500', 200)">🔥 Cehennem Alevi - $200</button>
+        <button class="menu-btn sec" id="shop-btn-back" style="margin-top: 20px;" onclick="closeShopMenu()">MENÜYE DÖN</button>
+    </div>
+
+    <div id="map-menu" class="ui-panel" style="display: none;">
+        <h1 id="map-title">🗺️ HARİTA TEMASI SEÇ</h1>
+        <p id="map-desc">Savaşacağın arenanın atmosferini belirle!</p>
+        <button class="menu-btn mode" style="background:#27ae60;" onclick="selectMap('cim')">🌿 Çimlik Vadi (Klasik Yeşil)</button>
+        <button class="menu-btn mode" style="background:#d35400;" onclick="selectMap('col')">🏜️ Kızıl Çöl (Sıcak Kumlar)</button>
+        <button class="menu-btn mode" style="background:#2980b9;" onclick="selectMap('buz')">🧊 Buzul Diyarı (Buz Rengi)</button>
+        <button class="menu-btn sec" id="map-btn-back" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="character-menu" class="ui-panel" style="display: none;">
+        <h1 id="char-title">🎨 KLASİK RENK SEÇİMİ</h1>
+        <p id="char-desc">Standart karakter rengini seç!</p>
+        <div class="color-picker-container">
+            <div class="color-box selected" style="background: #00d2d3;" onclick="selectColor('#00d2d3', this)"></div>
+            <div class="color-box" style="background: #e74c3c;" onclick="selectColor('#e74c3c', this)"></div>
+            <div class="color-box" style="background: #2ecc71;" onclick="selectColor('#2ecc71', this)"></div>
+            <div class="color-box" style="background: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+            <div class="color-box" style="background: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+            <div class="color-box" style="background: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+        </div>
+        <button class="menu-btn" id="char-btn-back" onclick="showMainMenu()">KAYDET & DÖN</button>
+    </div>
+
+    <div id="profile-menu" class="ui-panel" style="display: none;">
+        <h1 id="prof-title">OYUNCU PROFİLİ</h1>
+        <p id="prof-desc">İsmini ve Klanını belirle!</p>
+        <input type="text" id="player-name-input" class="room-input" placeholder="Oyuncu İsmi..." maxlength="12">
+        <input type="text" id="clan-name-input" class="room-input" placeholder="Klan İsmi..." maxlength="6">
+        <button class="menu-btn" id="prof-btn-save" onclick="savePlayerProfile()">KAYDET & DÖN</button>
+        <button class="menu-btn sec" id="prof-btn-back" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="mode-menu" class="ui-panel" style="display: none;">
+        <h1 id="mode-title">🎮 OYUN MODU SEÇ</h1>
+        <button class="menu-btn mode" id="mode-btn-zombie" onclick="startSelectedGameMode('Zombilere Karsi')">🧟 ZOMBİLERE KARŞI İNSANLAR</button>
+        <button class="menu-btn mode" id="mode-btn-pvp" style="background:#e74c3c;" onclick="startSelectedGameMode('PvP')">⚔️ İNSANLAR VS İNSANLAR (PVP)</button>
+        <button class="menu-btn mode" id="mode-btn-boss" style="background:#27ae60;" onclick="startSelectedGameMode('Boss')">👑 BOSSLAR VS İNSANLAR</button>
+        <button class="menu-btn mode" id="mode-btn-inf" style="background:#8e44ad;" onclick="startSelectedGameMode('Enfeksiyon')">☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)</button>
+        <button class="menu-btn sec" id="mode-btn-back" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <div id="leaderboard-menu" class="ui-panel" style="display: none;">
+        <h1 id="lb-title">🏆 LİDERLİK TABLOSU</h1>
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="setLeaderboardMode('Zombilere Karsi', this)">Zombiler</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('PvP', this)">PvP</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('Boss', this)">Boss</button>
+            <button class="tab-btn" onclick="setLeaderboardMode('Enfeksiyon', this)">Enfeksiyon</button>
+        </div>
+        <div class="tab-container">
+            <button class="tab-btn active" id="tab-all" onclick="setLeaderboardPeriod('all')">Tüm Zamanlar</button>
+            <button class="tab-btn" id="tab-weekly" onclick="setLeaderboardPeriod('weekly')">Bu Hafta</button>
+        </div>
+        <div class="leaderboard-table" id="leaderboard-content"></div>
+        <button class="menu-btn sec" id="lb-btn-back" onclick="showMainMenu()">GERİ</button>
+    </div>
+
+    <!-- BAYILMA EKRANI -->
+    <div id="downed-screen" class="ui-panel" style="display: none; background: rgba(192, 57, 43, 0.9);">
+        <h1 style="color: #fff; font-size: 32px;">⚠️ BAYILDIN!</h1>
+        <p id="downed-timer-text">Arkadaşının yeşil çemberine gelip seni kurtarmasını bekle: 10sn</p>
+    </div>
+
+    <!-- REKLAM MODALI -->
+    <div id="ad-modal">
+        <h1 style="color: #f1c40f; font-size: 24px;">📺 REKLAM OYNATILIYOR</h1>
+        <p id="ad-timer-text" style="font-size: 16px; margin: 15px 0;">Lütfen reklamın bitmesini bekleyin: 5sn</p>
+        <div id="ad-container-box" style="width: 300px; height: 160px; background: #222; border: 2px solid #f1c40f; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin-bottom: 20px; overflow: hidden;">
+            <p style="color: #fff; font-size: 14px; font-weight: bold; margin-bottom: 5px;">Sponsored Ad</p>
+            <div id="ad-script-slot"></div>
+        </div>
+        <button id="skip-ad-btn" class="menu-btn sec" style="background: #e74c3c; cursor: not-allowed; opacity: 0.6;" disabled>REKLAMI GEÇ (Bekleniyor...)</button>
+    </div>
+
     <div id="game-over" class="ui-panel" style="display: none;">
-        <h1 style="color:#e74c3c;">💥 EV YIKILDI!</h1>
-        <p style="margin: 10px 0;">Zombiler evi yok etti!</p>
-        <button class="menu-btn" onclick="showMainMenu()">🏠 ANA MENÜYE DÖN</button>
+        <h1 id="game-over-title" style="color: #ff4757;">OYUN BİTTİ!</h1>
+        <p id="final-score">Skorun: 0</p>
+        <button id="revive-btn" class="menu-btn ad" onclick="watchAdToRevive()">📺 REKLAM İZLE & CANLAN (<span id="ad-count">3</span>/3)</button>
+        <p id="ad-cooldown-text" style="font-size: 11px; color: #f39c12; margin-top: 4px; display: none;"></p>
+        <button class="menu-btn rank" id="go-btn-rank" onclick="showLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn" id="go-btn-restart" onclick="showModeSelect()">🔄 Yeniden Başla</button>
+        <button class="menu-btn sec" id="go-btn-menu" onclick="showMainMenu()">🏠 Ana Menü</button>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+        let playerName = localStorage.getItem("brawl_playerName") || "Arda";
+        let clanName = localStorage.getItem("brawl_clanName") || "PRO";
+        let playerColor = localStorage.getItem("brawl_playerColor") || "#00d2d3";
+        let savedMoney = parseInt(localStorage.getItem("brawl_money")) || 50;
 
-        let playerName = localStorage.getItem("zombs_player_name") || "Arda_" + Math.floor(Math.random()*100);
-        let gameState = "MENU";
-        let isMultiplayer = false, isHost = true;
-        let peer = null, conn = null;
+        let currentSkin = "Varsayılan";
+        let currentMap = "cim";
+        let isMobileDevice = true; 
 
-        // Genel Sunucu Listesi için Mock/Local Veri Havuzu
-        let publicServers = [
-            { id: "zombs_pub_101", name: "TR_Zombi_Avcilari", players: "1/2" },
-            { id: "zombs_pub_102", name: "Evi_Koru_Pro", players: "1/2" }
-        ];
+        let clanJoined = false;
+        let isGodMode = false;
+        let isChatOpen = false;
+        let isZombified = false;
+        let currentLang = localStorage.getItem("brawl_lang") || 'tr';
 
-        let gold = 100, wave = 1;
-        const house = { x: 2000, y: 2000, size: 100, health: 500, maxHealth: 500 };
-        const player = { x: 2000, y: 2150, radius: 20, speed: 5, health: 100, maxHealth: 100, angle: 0 };
-        const friend = { x: 2050, y: 2150, radius: 20, health: 100, active: false, angle: 0 };
+        const socket = io("https://stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io", { autoConnect: true });
+        let liveServerRooms = [];
+        let lastAdTime = 0;
 
-        let walls = [], turrets = [], bullets = [], enemies = [];
-        let joystick = { active: false, id: null, baseX: 0, baseY: 0, touchX: 0, touchY: 0, power: 0, angle: 0 };
+        socket.on('room-list', (rooms) => {
+            liveServerRooms = rooms;
+            updateServerListUI();
+        });
 
-        function showMainMenu() {
-            gameState = "MENU";
-            document.getElementById("main-menu").style.display = "flex";
-            document.getElementById("servers-menu").style.display = "none";
-            document.getElementById("multi-menu").style.display = "none";
-            document.getElementById("game-over").style.display = "none";
-            document.getElementById("hud").style.display = "none";
-            document.getElementById("build-wall-btn").style.display = "none";
-            document.getElementById("build-turret-btn").style.display = "none";
-            document.getElementById("fire-btn").style.display = "none";
+        function registerLiveServer(roomId, name, mode) {
+            socket.emit('create-room', { id: roomId, name: name, mode: mode });
         }
 
-        function showPublicServers() {
-            document.getElementById("main-menu").style.display = "none";
-            document.getElementById("servers-menu").style.display = "flex";
-            renderServerList();
+        function saveGameData() {
+            localStorage.setItem("brawl_playerName", playerName);
+            localStorage.setItem("brawl_clanName", clanName);
+            localStorage.setItem("brawl_playerColor", playerColor);
+            localStorage.setItem("brawl_money", player.money);
         }
 
-        function showMultiplayerMenu() {
-            document.getElementById("main-menu").style.display = "none";
-            document.getElementById("multi-menu").style.display = "flex";
+        function registerAccount() {
+            let user = document.getElementById("auth-username-input").value.trim();
+            let pass = document.getElementById("auth-password-input").value.trim();
+            if (!user || !pass) { alert("Lütfen kullanıcı adı ve şifre yaz!"); return; }
+            let accounts = JSON.parse(localStorage.getItem("brawl_accounts") || "{}");
+            if (accounts[user]) { alert("Bu kullanıcı adı zaten alınmış!"); return; }
+            accounts[user] = { password: pass, money: 50, skin: "Varsayılan", color: "#00d2d3" };
+            localStorage.setItem("brawl_accounts", JSON.stringify(accounts));
+            playerName = user; savedMoney = 50; player.money = 50; playerColor = "#00d2d3";
+            saveGameData();
+            alert(`Hesap başarıyla oluşturuldu! Hoş geldin, ${user}`);
+            showMainMenu();
         }
 
-        function renderServerList() {
-            let container = document.getElementById("server-list-box");
-            if (publicServers.length === 0) {
-                container.innerHTML = `<div class="server-row" style="color:#aaa;">Açık sunucu bulunamadı. Sen kur!</div>`;
-                return;
+        function loginAccount() {
+            let user = document.getElementById("auth-username-input").value.trim();
+            let pass = document.getElementById("auth-password-input").value.trim();
+            if (!user || !pass) { alert("Lütfen kullanıcı adı ve şifre yaz!"); return; }
+            let accounts = JSON.parse(localStorage.getItem("brawl_accounts") || "{}");
+            if (!accounts[user]) { alert("Böyle bir hesap bulunamadı!"); return; }
+            if (accounts[user].password !== pass) { alert("Şifre hatalı!"); return; }
+            playerName = user;
+            savedMoney = accounts[user].money || 50;
+            player.money = savedMoney;
+            playerColor = accounts[user].color || "#00d2d3";
+            saveGameData();
+            alert(`Giriş başarılı! Hoş geldin, ${user}`);
+            showMainMenu();
+        }
+
+        const translations = {
+            tr: { 
+                title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Sürüm", 
+                play: "🎮 TEKLİ OYNA (MOD SEÇ)", hostJoin: "🌐 ARKADAŞLA OYNA (ODA KUR / KATIL)", 
+                publicServers: "🌍 GENEL SUNUCULAR (CANLI LİSTE)", shop: "🛒 SKİN MAĞAZASI ($)", map: "🗺️ HARİTA SEÇİ", 
+                char: "🎨 RENK SEÇİMİ", profile: "👤 PROFİL", rank: "🏆 LİDERLİK TABLOSU", lang: "🌐 DİL / LANGUAGE", auth: "🔑 HESAP GİRİŞİ / KAYIT",
+                back: "GERİ", saveBack: "KAYDET & DÖN", hostTitle: "🏠 ODA KUR (HOST OL)", joinTitle: "🔗 ODAYA KATIL", hostBtn: "ODA KUR & OYNA", joinBtn: "ODAYA BAĞLAN",
+                serverTitle: "🌍 CANLI GENEL SUNUCULAR", serverDesc: "Aşağıda oyuncular tarafından açılmış canlı odaları görebilirsin.",
+                createServerBtn: "➕ YENİ SUNUCU KUR", refreshBtn: "🔄 LİSTEYİ YENİLE", serverListHead: "--- AÇIK CANLI SUNUCULAR ---",
+                modeZombie: "🧟 ZOMBİLERE KARŞI İNSANLAR", modePvP: "⚔️ İNSANLAR VS İNSANLAR (PVP)", modeBoss: "👑 BOSSLAR VS İNSANLAR", modeInf: "☣️ ZOMBİYE DÖNÜŞÜM (ENFEKSİYON)"
+            },
+            en: { 
+                title: "BRAWL SURVIVAL 2D", subtitle: "Ultimate Multiplayer Edition", 
+                play: "🎮 SINGLEPLAYER (SELECT MODE)", hostJoin: "🌐 PLAY WITH FRIENDS (HOST / JOIN)", 
+                publicServers: "🌍 PUBLIC SERVERS (LIVE LIST)", shop: "🛒 SKIN SHOP ($)", map: "🗺️ MAP SELECTION", 
+                char: "🎨 COLOR SELECTION", profile: "👤 PROFILE", rank: "🏆 LEADERBOARD", lang: "🌐 LANGUAGE", auth: "🔑 ACCOUNT LOGIN / REGISTER",
+                back: "BACK", saveBack: "SAVE & RETURN", hostTitle: "🏠 HOST ROOM", joinTitle: "🔗 JOIN ROOM", hostBtn: "HOST & PLAY", joinBtn: "CONNECT TO ROOM",
+                serverTitle: "🌍 LIVE PUBLIC SERVERS", serverDesc: "Active rooms below!",
+                createServerBtn: "➕ HOST NEW SERVER", refreshBtn: "🔄 REFRESH LIST", serverListHead: "--- ACTIVE PUBLIC SERVERS ---",
+                modeZombie: "🧟 SURVIVE AGAINST ZOMBIES", modePvP: "⚔️ HUMANS VS HUMANS (PVP)", modeBoss: "👑 BOSSES VS HUMANS", modeInf: "☣️ ZOMBIE INFECTION MODE"
             }
-            let html = "";
-            publicServers.forEach(s => {
-                html += `<div class="server-row">
-                    <span>🎮 ${s.name}</span>
-                    <button class="menu-btn server" style="width:70px; padding:4px; font-size:10px; margin:0;" onclick="joinPublicServer('${s.id}')">KATIL</button>
-                </div>`;
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem("brawl_lang", lang);
+            let t = translations[lang] || translations['tr'];
+            document.getElementById("txt-title").innerText = t.title;
+            document.getElementById("txt-subtitle").innerText = t.subtitle;
+            document.getElementById("btn-auth").innerText = t.auth;
+            document.getElementById("btn-play").innerText = t.play;
+            document.getElementById("btn-host-join").innerText = t.hostJoin;
+            document.getElementById("btn-public-servers").innerText = t.publicServers;
+            document.getElementById("btn-shop").innerText = t.shop;
+            document.getElementById("btn-map").innerText = t.map;
+            document.getElementById("btn-char").innerText = t.char;
+            document.getElementById("btn-profile").innerText = t.profile;
+            document.getElementById("btn-rank").innerText = t.rank;
+            document.getElementById("btn-lang").innerText = t.lang;
+            showMainMenu();
+        }
+
+        function showLanguageMenu() { document.getElementById("main-menu").style.display = "none"; document.getElementById("language-menu").style.display = "flex"; }
+        function showAuthMenu() { document.getElementById("main-menu").style.display = "none"; document.getElementById("auth-menu").style.display = "flex"; }
+
+        let peer = null, conn = null, myPeerId = null;
+        let isHost = false;
+        let activeRoomId = null;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let musicInterval = null, isMusicPlaying = false;
+
+        function startBGM() {
+            if (isMusicPlaying) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            isMusicPlaying = true;
+            const notes = [130.81, 164.81, 196.00, 220.00, 246.94, 196.00, 164.81, 130.81];
+            let step = 0;
+            musicInterval = setInterval(() => {
+                if (!isMusicPlaying) return;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+                step++;
+            }, 300);
+        }
+
+        function stopBGM() { isMusicPlaying = false; if (musicInterval) clearInterval(musicInterval); }
+
+        function initAudioAndShowModes() { if (audioCtx.state === 'suspended') audioCtx.resume(); startBGM(); showModeSelect(); }
+        function initAudioAndShowHostJoin() { if (audioCtx.state === 'suspended') audioCtx.resume(); startBGM(); document.getElementById("main-menu").style.display = "none"; document.getElementById("host-join-menu").style.display = "flex"; }
+        function initAudioAndShowServers() { if (audioCtx.state === 'suspended') audioCtx.resume(); startBGM(); showPublicServers(); }
+        function showPublicServers() { document.getElementById("main-menu").style.display = "none"; document.getElementById("public-servers-menu").style.display = "flex"; }
+        function refreshServerList() { alert("Sunucu listesi güncellendi!"); }
+
+        function updateServerListUI() {
+            let container = document.getElementById("server-list-container");
+            if (liveServerRooms.length === 0) {
+                container.innerHTML = `<div class="leaderboard-row" style="color: #aaa; text-align: center; justify-content: center; padding: 15px;">Şu an açık canlı sunucu yok.</div>`;
+            } else {
+                let html = "";
+                liveServerRooms.forEach(room => {
+                    html += `<div class="leaderboard-row">
+                        <span>🎮 ${room.name} (${room.mode})</span>
+                        <button class="menu-btn server" style="width:90px; padding:6px; margin:0; font-size:11px;" onclick="connectToLiveServer('${room.id}', '${room.mode}')">KATIL</button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            }
+        }
+
+        function showCreateServerDialog() {
+            let mode = prompt("Mod seç:\n1 - Zombilere Karsi\n2 - PvP\n3 - Boss\n4 - Enfeksiyon", "1");
+            let selected = "Zombilere Karsi";
+            if (mode === "2") selected = "PvP";
+            else if (mode === "3") selected = "Boss";
+            else if (mode === "4") selected = "Enfeksiyon";
+
+            let roomId = "brawl_live_" + Math.floor(Math.random() * 89999 + 10000);
+            activeRoomId = roomId;
+            isMultiplayer = true; isHost = true;
+            if (peer) peer.destroy();
+            
+            peer = new Peer(roomId, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
             });
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                registerLiveServer(id, `${playerName}'in Odası`, selected);
+                socket.emit('join-room', roomId);
+                alert(`🌐 Sunucu Açıldı! Mod: ${selected}`);
+                startGame(selected);
+            });
+
+            peer.on('connection', (c) => {
+                conn = c; setupConnectionEvents(); friendPlayer.active = true;
+                printConsole("🔗 Bir oyuncu sunucuya katıldı!");
+            });
+            peer.on('error', (err) => { alert("Hata: " + err); });
+        }
+
+        function connectToLiveServer(roomId, mode) {
+            activeRoomId = roomId;
+            isMultiplayer = true; isHost = false;
+            socket.emit('join-room', roomId);
+            if (peer) peer.destroy();
+            
+            peer = new Peer(undefined, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
+            });
+
+            peer.on('open', (id) => {
+                conn = peer.connect(roomId);
+                conn.on('open', () => {
+                    setupConnectionEvents(); friendPlayer.active = true;
+                    alert(`🌐 ${mode} odasına bağlanıldı!`);
+                    startGame(mode);
+                });
+            });
+            peer.on('error', () => { alert("Bağlantı hatası!"); });
+        }
+
+        socket.on('sync-action', (data) => {
+            if (data.chatMsg) printConsole(data.chatMsg);
+        });
+
+        function setupConnectionEvents() {
+            if (!conn) return;
+            conn.on('open', () => { friendPlayer.active = true; printConsole("✅ Bağlandı!"); });
+            conn.on('data', (d) => {
+                if (d.chatMsg) { printConsole(d.chatMsg); return; }
+                friendPlayer.x = d.x; friendPlayer.y = d.y; friendPlayer.angle = d.angle;
+                friendPlayer.health = d.health; friendPlayer.score = d.score; friendPlayer.name = d.name;
+                friendPlayer.color = d.color || "#ff7979"; friendPlayer.weapon = d.weapon || "Tabanca";
+                friendPlayer.isZombified = d.isZombified; friendPlayer.isDowned = d.isDowned; friendPlayer.active = true;
+
+                if (isHost) {
+                    if (d.bulletFired) bullets.push(d.bulletFired);
+                    if (d.hitPlayer) { friendPlayer.health -= d.damage || 5; if (friendPlayer.health <= 0) friendPlayer.isDowned = true; updateUI(); }
+                    if (d.reviveRequest && friendPlayer.isDowned) { friendPlayer.health = 50; friendPlayer.isDowned = false; }
+                } else {
+                    if (d.enemies) enemies = d.enemies;
+                    if (d.currentWave) currentWave = d.currentWave;
+                    if (d.hitPlayer) { player.health -= d.damage || 5; if (player.health <= 0) triggerDowned(); updateUI(); }
+                    if (d.reviveResponse) { player.health = 50; isDowned = false; document.getElementById("downed-screen").style.display = "none"; }
+                }
+            });
+        }
+
+        function hostCustomRoomCode() {
+            let code = document.getElementById("host-room-code-input").value.trim();
+            if (!code) { alert("Kod girin!"); return; }
+            let fullCode = "brawl_room_" + code;
+            activeRoomId = fullCode;
+            isMultiplayer = true; isHost = true;
+            if (peer) peer.destroy();
+            
+            peer = new Peer(fullCode, {
+                host: 'stackblitzstarterssjkjuej3-r2i4--3000--2ed8f36d.local-credentialless.webcontainer.io',
+                port: 443,
+                secure: true,
+                path: '/peerjs'
+            });
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                registerLiveServer(id, `${playerName}'in Odası (${code})`, "Zombilere Karsi");
+                socket.emit('join-room', fullCode);
+                alert(`Oda kuruldu! Kod: ${code}`);
+                showModeSelect();
+            });
+            peer.on('connection', (c) => { conn = c; setupConnectionEvents(); friendPlayer.active = true; printConsole("🔗 Oyuncu katıldı!"); });
+        }
+
+        function joinCustomRoomCode() {
+            let code = document.getElementById("join-room-code-input").value.trim();
+            if (!code) { alert("Oda kodu gir!"); return; }
+            let fullCode = code.startsWith("brawl_") ? code : "brawl_room_" + code;
+            connectToLiveServer(fullCode, "Zombilere Karsi");
+        }
+
+        function showCharacterMenu() { document.getElementById("main-menu").style.display = "none"; document.getElementById("character-menu").style.display = "flex"; }
+        function showMapMenu() { document.getElementById("main-menu").style.display = "none"; document.getElementById("map-menu").style.display = "flex"; }
+
+        function selectMap(mapType) {
+            currentMap = mapType;
+            alert(mapType === 'cim' ? "🌿 Çimlik Vadi seçildi!" : (mapType === 'col' ? "🏜️ Kızıl Çöl seçildi!" : "🧊 Buzul Diyarı seçildi!"));
+            showMainMenu();
+        }
+
+        function selectColor(hex, element) {
+            playerColor = hex; currentSkin = "Varsayılan";
+            document.querySelectorAll('.color-box').forEach(b => b.classList.remove('selected'));
+            element.classList.add('selected'); saveGameData();
+        }
+
+        function openShopMenu() { document.getElementById("shop-menu").style.display = "flex"; document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`; }
+        function closeShopMenu() { document.getElementById("shop-menu").style.display = "none"; }
+
+        function playErrorSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            let now = audioCtx.currentTime;
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now); osc.frequency.setValueAtTime(90, now + 0.15);
+            gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        }
+
+        function buySkin(skinName, hexColor, price) {
+            if (player.money >= price) {
+                player.money -= price; playerColor = hexColor; currentSkin = skinName;
+                saveGameData(); alert(`${skinName} skini alındı! 🎉`); updateUI();
+                document.getElementById("shop-money-text").innerText = `Doların: 💵 $${player.money}`;
+            } else { playErrorSound(); }
+        }
+
+        function toggleChatWindow() {
+            let chatBox = document.getElementById("chat-container");
+            isChatOpen = !isChatOpen;
+            if (isChatOpen) { chatBox.style.display = "flex"; document.getElementById("chat-input").focus(); }
+            else { chatBox.style.display = "none"; document.getElementById("chat-input").blur(); }
+        }
+
+        function printConsole(msg) {
+            let container = document.getElementById("chat-messages");
+            let div = document.createElement("div"); div.className = "chat-msg chat-system"; div.innerText = msg;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatKey(e) { if (e.key === 'Enter') sendChatMessage(); }
+
+        function sendChatMessage() {
+            let input = document.getElementById("chat-input"); let text = input.value.trim();
+            if (!text) return; input.value = "";
+            let lower = text.toLowerCase();
+            if (lower === "/zombi") { isZombified = true; player.speed = 6.0; player.health = 150; printConsole("🦠 Zombiye dönüştürüldü!"); updateUI(); return; }
+            if (lower === "/insan") { isZombified = false; player.speed = 5.2; player.health = 100; addWeaponToInventory("Tabanca"); printConsole("👤 İnsana dönüştürüldü!"); updateUI(); return; }
+            if (lower === "/para") { player.money += 1000; saveGameData(); printConsole("💵 +$1000 eklendi!"); updateUI(); return; }
+            
+            let container = document.getElementById("chat-messages");
+            let div = document.createElement("div"); div.className = "chat-msg"; div.innerText = `${playerName}: ${text}`;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
+            if (isMultiplayer && conn && conn.open) conn.send({ chatMsg: `${playerName}: ${text}` });
+            if (isMultiplayer && activeRoomId) socket.emit('player-action', { roomId: activeRoomId, chatMsg: `${playerName}: ${text}` });
+        }
+
+        window.addEventListener('keydown', (e) => { if (e.key === 'Enter' && gameState === "PLAYING") toggleChatWindow(); });
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            let now = audioCtx.currentTime;
+            if (type === 'shoot') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'slash') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
+            } else if (type === 'hit') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'explosion') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(80, now); osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+                gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            }
+        }
+
+        let leaderboardData = { all: { "Zombilere Karsi": [], "PvP": [], "Boss": [], "Enfeksiyon": [] }, weekly: { "Zombilere Karsi": [], "PvP": [], "Boss": [], "Enfeksiyon": [] } };
+        let currentLbPeriod = "all", currentLbMode = "Zombilere Karsi";
+
+        function saveScoreToLeaderboard(score) {
+            let fullName = clanJoined ? `[${clanName}] ${playerName}` : playerName;
+            ['all', 'weekly'].forEach(period => {
+                let list = leaderboardData[period][selectedMode];
+                let existing = list.find(item => item.name === fullName);
+                if (existing) { if (score > existing.score) existing.score = score; }
+                else { list.push({name: fullName, score: score}); }
+                list.sort((a,b) => b.score - a.score);
+            });
+        }
+
+        function setLeaderboardPeriod(period) {
+            currentLbPeriod = period;
+            document.getElementById("tab-all").classList.toggle("active", period === 'all');
+            document.getElementById("tab-weekly").classList.toggle("active", period === 'weekly');
+            renderLeaderboard();
+        }
+
+        function setLeaderboardMode(mode, btnElement) {
+            currentLbMode = mode;
+            btnElement.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active'); renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            let container = document.getElementById("leaderboard-content");
+            let list = leaderboardData[currentLbPeriod][currentLbMode] || [];
+            let html = "";
+            if (list.length === 0) html = `<div style="padding:15px; color:#aaa;">Henüz kayıt yok.</div>`;
+            else list.forEach((item, index) => { html += `<div class="leaderboard-row"><span>${index+1}. ${item.name}</span><span>⭐ ${item.score}</span></div>`; });
             container.innerHTML = html;
         }
 
-        function createNewPublicServer() {
-            let serverId = "zombs_pub_" + Math.floor(Math.random() * 8999 + 1000);
-            let roomName = playerName + "_Odasi";
-            isMultiplayer = true; isHost = true;
-
-            peer = new Peer(serverId);
-            peer.on('open', () => {
-                publicServers.push({ id: serverId, name: roomName, players: "1/2" });
-                alert(`🌐 Genel Sunucu Kuruldu!\nSunucu Adı: ${roomName}`);
-                startGame();
-            });
-            peer.on('connection', (c) => {
-                conn = c; setupPeerEvents(); friend.active = true;
-            });
-            peer.on('error', () => alert("Sunucu oluşturulamadı, tekrar dene."));
-        }
-
-        function joinPublicServer(serverId) {
-            isMultiplayer = true; isHost = false;
-            peer = new Peer();
-            peer.on('open', () => {
-                conn = peer.connect(serverId);
-                conn.on('open', () => {
-                    setupPeerEvents(); friend.active = true;
-                    alert("Genel sunucuya başarıyla bağlandın!");
-                    startGame();
-                });
-                conn.on('error', () => alert("Sunucuya bağlanırken hata oluştu."));
-            });
-        }
-
-        function startSingleplayer() {
-            isMultiplayer = false; isHost = true; startGame();
-        }
-
-        function hostPrivateRoom() {
-            let code = document.getElementById("room-code-input").value.trim();
-            if (!code) return alert("Kendi özel oda kodunu gir!");
-            isMultiplayer = true; isHost = true;
-            
-            peer = new Peer("zombs_priv_" + code);
-            peer.on('open', () => {
-                alert(`Özel Oda Kuruldu! Kod: ${code}`);
-                startGame();
-            });
-            peer.on('connection', (c) => {
-                conn = c; setupPeerEvents(); friend.active = true;
-            });
-            peer.on('error', () => alert("Bu kod şu an başka biri tarafından kullanılıyor."));
-        }
-
-        function joinPrivateRoom() {
-            let code = document.getElementById("room-code-input").value.trim();
-            if (!code) return alert("Arkadaşının özel oda kodunu gir!");
-            isMultiplayer = true; isHost = false;
-
-            peer = new Peer();
-            peer.on('open', () => {
-                conn = peer.connect("zombs_priv_" + code);
-                conn.on('open', () => {
-                    setupPeerEvents(); friend.active = true;
-                    alert("Odaya bağlanıldı!");
-                    startGame();
-                });
-            });
-        }
-
-        function setupPeerEvents() {
-            conn.on('data', (d) => {
-                friend.x = d.x; friend.y = d.y; friend.angle = d.angle; friend.health = d.health;
-                if (d.bullet) bullets.push(d.bullet);
-                if (isHost && d.build) {
-                    if (d.build.type === 'wall') walls.push(d.build.data);
-                    if (d.build.type === 'turret') turrets.push(d.build.data);
-                }
-                if (!isHost) {
-                    if (d.enemies) enemies = d.enemies;
-                    if (d.walls) walls = d.walls;
-                    if (d.turrets) turrets = d.turrets;
-                    if (d.houseHp) house.health = d.houseHp;
-                }
-            });
-        }
-
-        function startGame() {
-            gameState = "PLAYING";
-            house.health = 500; player.health = 100; gold = 100; wave = 1;
-            walls = []; turrets = []; bullets = []; enemies = [];
-            player.x = 2000; player.y = 2150;
-            
+        function showLeaderboard() {
+            document.getElementById("game-over").style.display = "none";
             document.getElementById("main-menu").style.display = "none";
-            document.getElementById("servers-menu").style.display = "none";
-            document.getElementById("multi-menu").style.display = "none";
-            document.getElementById("hud").style.display = "flex";
-            document.getElementById("build-wall-btn").style.display = "flex";
-            document.getElementById("build-turret-btn").style.display = "flex";
-            document.getElementById("fire-btn").style.display = "flex";
-            updateUI();
+            document.getElementById("leaderboard-menu").style.display = "flex"; renderLeaderboard();
         }
 
-        function buildWall() {
-            if (gold < 20) return;
-            gold -= 20; updateUI();
-            let wx = player.x + Math.cos(player.angle) * 45;
-            let wy = player.y + Math.sin(player.angle) * 45;
-            let wObj = { x: wx, y: wy, size: 30, health: 100, maxHealth: 100 };
-            walls.push(wObj);
-            if (isMultiplayer && conn && conn.open) conn.send({ build: { type: 'wall', data: wObj } });
+        function showProfileMenu() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("profile-menu").style.display = "flex";
+            document.getElementById("player-name-input").value = playerName;
+            document.getElementById("clan-name-input").value = clanName;
         }
 
-        function buildTurret() {
-            if (gold < 60) return;
-            gold -= 60; updateUI();
-            let tx = player.x + Math.cos(player.angle) * 45;
-            let ty = player.y + Math.sin(player.angle) * 45;
-            let tObj = { x: tx, y: ty, size: 28, lastShoot: 0 };
-            turrets.push(tObj);
-            if (isMultiplayer && conn && conn.open) conn.send({ build: { type: 'turret', data: tObj } });
+        function savePlayerProfile() {
+            let val = document.getElementById("player-name-input").value.trim();
+            let cVal = document.getElementById("clan-name-input").value.trim();
+            if (val) playerName = val; if (cVal) clanName = cVal.toUpperCase();
+            saveGameData(); showMainMenu();
         }
 
-        function shoot() {
-            let b = { x: player.x, y: player.y, vx: Math.cos(player.angle) * 14, vy: Math.sin(player.angle) * 14 };
-            bullets.push(b);
-            if (isMultiplayer && conn && conn.open) conn.send({ bullet: b });
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); }
+            else { if (document.exitFullscreen) document.exitFullscreen().catch(() => {}); }
+            enableLandscape();
         }
+        function enableLandscape() { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }
 
-        document.getElementById("fire-btn").addEventListener("touchstart", (e) => { e.preventDefault(); shoot(); });
+        const WORLD_WIDTH = 3500, WORLD_HEIGHT = 3500;
+        let gameState = "MENU", selectedMode = "Zombilere Karsi", isMultiplayer = false;
+        let reviveRight = 3, outOfBoundsTimer = 600, isDowned = false, downedTimer = 10, downedInterval = null;
+        let currentWave = 1, waveEnemiesLeft = 10, enemiesSpawnedInWave = 0, turrets = [];
 
-        window.addEventListener("touchstart", (e) => {
-            if (gameState !== "PLAYING") return;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                let touch = e.changedTouches[i];
-                if (touch.clientX < window.innerWidth / 2 && !joystick.active) {
-                    joystick.active = true; joystick.id = touch.identifier;
-                    joystick.baseX = touch.clientX; joystick.baseY = touch.clientY;
-                    joystick.touchX = touch.clientX; joystick.touchY = touch.clientY;
+        let player = { 
+            x: 1750, y: 1750, radius: 22, speed: 5.2, health: 100, maxHealth: 100, money: savedMoney, score: 0, angle: 0, moveAngle: 0, dashCooldown: 0,
+            weapon: "Bıçak", ammo: 999, maxAmmo: 999, reserveAmmo: 0, isReloading: false, inventory: ["Bıçak", "Katana", "Tabanca"]
+        };
+        let friendPlayer = { x: 1800, y: 1750, radius: 22, color: "#ff7979", health: 100, maxHealth: 100, angle: 0, name: "Arkadaş", weapon: "Tabanca", score: 0, active: false, isDowned: false, isZombified: false };
+
+        let bullets = [], enemies = [], crates = [], lootDrops = [], explosions = [];
+        let lastShotTime = 0, keys = { w: false, a: false, s: false, d: false }, mouse = { x: 0, y: 0, down: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== "PLAYING" || isChatOpen || e.target.tagName === 'INPUT') return;
+            if (e.key.toLowerCase() === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if (e.key.toLowerCase() === 's' || e.key === 'ArrowDown') keys.s = true;
+            if (e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if (e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = true;
+            if (e.key.toLowerCase() === 'r') reloadWeapon();
+            if (e.key.toLowerCase() === 'e') cycleInventoryWeapon();
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (player.dashCooldown <= 0 && !isDowned) {
+                    player.x += Math.cos(player.moveAngle) * 180; player.y += Math.sin(player.moveAngle) * 180; player.dashCooldown = 600;
                 }
             }
         });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if (e.key.toLowerCase() === 's' || e.key === 'ArrowDown') keys.s = false;
+            if (e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if (e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        window.addEventListener('mousemove', (e) => { 
+            mouse.x = e.clientX; mouse.y = e.clientY; 
+            if (gameState === "PLAYING") player.angle = Math.atan2((mouse.y - canvas.height/2), (mouse.x - canvas.width/2));
+        });
+        window.addEventListener('mousedown', (e) => {
+            if (gameState !== "PLAYING" || isChatOpen || e.target.closest('.ui-panel') || e.target.closest('.game-btn') || e.target.closest('#hud') || e.target.closest('#ingame-menu-btn') || e.target.closest('#chat-container')) return;
+            mouse.down = true; shoot();
+        });
+        window.addEventListener('mouseup', () => { mouse.down = false; });
+
+        function generateCrates() {
+            crates = []; lootDrops = [];
+            for(let c = 0; c < 28; c++) {
+                crates.push({ x: Math.random() * (WORLD_WIDTH - 400) + 200, y: Math.random() * (WORLD_HEIGHT - 400) + 200, size: 44, health: 3, maxHealth: 3 });
+            }
+        }
+
+        let joystick = { active: false, id: null, baseX: 0, baseY: 0, touchX: 0, touchY: 0, angle: 0, power: 0, maxRadius: 65 };
+
+        window.addEventListener("touchstart", (e) => {
+            if (gameState !== "PLAYING" || isChatOpen) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                let touch = e.changedTouches[i];
+                let targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (targetEl && (targetEl.closest('.game-btn') || targetEl.closest('.ui-panel') || targetEl.closest('#hud') || targetEl.closest('#ingame-menu-btn') || targetEl.closest('#chat-container'))) continue;
+
+                if (touch.clientX < window.innerWidth / 2 && !joystick.active) {
+                    joystick.active = true; joystick.id = touch.identifier;
+                    joystick.baseX = touch.clientX; joystick.baseY = touch.clientY;
+                    joystick.touchX = touch.clientX; joystick.touchY = touch.clientY; joystick.power = 0;
+                }
+            }
+        }, { passive: false });
 
         window.addEventListener("touchmove", (e) => {
             if (!joystick.active) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let touch = e.changedTouches[i];
                 if (touch.identifier === joystick.id) {
-                    let dx = touch.clientX - joystick.baseX, dy = touch.clientY - joystick.baseY;
-                    let dist = Math.hypot(dx, dy);
-                    joystick.angle = Math.atan2(dy, dx); player.angle = joystick.angle;
-                    joystick.power = Math.min(dist / 50, 1);
-                    joystick.touchX = joystick.baseX + Math.cos(joystick.angle) * (joystick.power * 50);
-                    joystick.touchY = joystick.baseY + Math.sin(joystick.angle) * (joystick.power * 50);
+                    let dx = touch.clientX - joystick.baseX, dy = touch.clientY - joystick.baseY, dist = Math.hypot(dx, dy);
+                    player.moveAngle = Math.atan2(dy, dx);
+                    if (dist < joystick.maxRadius) { 
+                        joystick.touchX = touch.clientX; 
+                        joystick.touchY = touch.clientY; 
+                        joystick.power = dist / joystick.maxRadius; 
+                    } else { 
+                        joystick.touchX = joystick.baseX + Math.cos(player.moveAngle) * joystick.maxRadius; 
+                        joystick.touchY = joystick.baseY + Math.sin(player.moveAngle) * joystick.maxRadius; 
+                        joystick.power = 1; 
+                    }
                 }
+            }
+        }, { passive: false });
+
+        window.addEventListener("touchend", (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystick.id) { joystick.active = false; joystick.power = 0; }
+            }
+        });
+        window.addEventListener("touchcancel", (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystick.id) { joystick.active = false; joystick.power = 0; }
             }
         });
 
-        window.addEventListener("touchend", () => { joystick.active = false; joystick.power = 0; });
+        let fireAim = { active: false, id: null, startX: 0, startY: 0, currentX: 0, currentY: 0 };
+        const fireBtn = document.getElementById("fire-btn");
 
-        function spawnZombie() {
-            if (gameState !== "PLAYING" || !isHost) return;
-            if (enemies.length >= 25) return;
-            let spawnAngle = Math.random() * Math.PI * 2;
-            let ex = house.x + Math.cos(spawnAngle) * 900;
-            let ey = house.y + Math.sin(spawnAngle) * 900;
-            enemies.push({ x: ex, y: ey, radius: 16, speed: 1.8 + (wave * 0.2), health: 3.0 });
+        fireBtn.addEventListener("touchstart", (e) => {
+            e.preventDefault(); if (gameState !== "PLAYING" || isDowned) return;
+            let touch = e.changedTouches[0];
+            fireAim.active = true; fireAim.id = touch.identifier; fireAim.startX = touch.clientX; fireAim.startY = touch.clientY; fireAim.currentX = touch.clientX; fireAim.currentY = touch.clientY;
+        });
+        fireBtn.addEventListener("touchmove", (e) => {
+            if (!fireAim.active) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                let touch = e.changedTouches[i];
+                if (touch.identifier === fireAim.id) {
+                    fireAim.currentX = touch.clientX; fireAim.currentY = touch.clientY;
+                    let dx = fireAim.currentX - fireAim.startX, dy = fireAim.currentY - fireAim.startY;
+                    if (Math.hypot(dx, dy) > 8) { player.angle = Math.atan2(dy, dx); shoot(); }
+                }
+            }
+        });
+        fireBtn.addEventListener("touchend", (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                let touch = e.changedTouches[i];
+                if (touch.identifier === fireAim.id) {
+                    let dx = fireAim.currentX - fireAim.startX, dy = fireAim.currentY - fireAim.startY;
+                    if (Math.hypot(dx, dy) > 8) player.angle = Math.atan2(dy, dx);
+                    shoot(); fireAim.active = false;
+                }
+            }
+        });
+        fireBtn.addEventListener("touchcancel", (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                let touch = e.changedTouches[i];
+                if (touch.identifier === fireAim.id) fireAim.active = false;
+            }
+        });
+
+        function showModeSelect() {
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("mode-menu").style.display = "flex";
+            document.getElementById("game-over").style.display = "none";
         }
-        setInterval(spawnZombie, 1200);
 
-        function updateUI() {
-            document.getElementById("house-hp").innerText = `${Math.max(0, Math.floor(house.health))}/${house.maxHealth}`;
-            document.getElementById("player-hp").innerText = `${Math.max(0, Math.floor(player.health))}/${player.maxHealth}`;
-            document.getElementById("gold-val").innerText = gold;
-            document.getElementById("wave-val").innerText = wave;
+        function showMainMenu() {
+            gameState = "MENU"; if (downedInterval) clearInterval(downedInterval);
+            document.getElementById("mode-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("profile-menu").style.display = "none";
+            document.getElementById("character-menu").style.display = "none";
+            document.getElementById("leaderboard-menu").style.display = "none";
+            document.getElementById("map-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("shop-menu").style.display = "none";
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("downed-screen").style.display = "none";
+            document.getElementById("main-menu").style.display = "flex";
+            document.getElementById("danger-overlay").style.borderColor = "rgba(231, 76, 60, 0)";
+            document.getElementById("pc-controls-info").style.display = "none";
+            document.getElementById("chat-container").style.display = "none";
+            showHUD(false); stopBGM();
         }
 
-        function update() {
-            if (gameState !== "PLAYING") return;
+        function requestClanJoin() {
+            clanJoined = !clanJoined;
+            let btn = document.getElementById("team-toggle-btn");
+            if (clanJoined) { btn.innerText = "❌ KLANDAN AYRIL"; btn.classList.add("teamed"); alert(`[${clanName}] klanına katıldın!`); }
+            else { btn.innerText = "🛡️ KLANA KATIL"; btn.classList.remove("teamed"); alert("Klandan ayrıldın."); }
+            updateUI();
+        }
 
-            if (joystick.power > 0) {
-                player.x += Math.cos(joystick.angle) * player.speed * joystick.power;
-                player.y += Math.sin(joystick.angle) * player.speed * joystick.power;
+        function watchAdToRevive() {
+            if (reviveRight <= 0) return;
+            let nowTime = Date.now();
+            let cooldownTime = 9 * 60 * 1000;
+            if (lastAdTime && (nowTime - lastAdTime < cooldownTime)) {
+                let remainingSec = Math.ceil((cooldownTime - (nowTime - lastAdTime)) / 1000);
+                let remMin = Math.floor(remainingSec / 60);
+                let remS = remainingSec % 60;
+                let cdText = document.getElementById("ad-cooldown-text");
+                cdText.style.display = "block";
+                cdText.innerText = `⏳ Tekrar reklam izlemek için ${remMin} dk ${remS} sn beklemelisin!`;
+                return;
             }
 
+            document.getElementById("game-over").style.display = "none";
+            let adModal = document.getElementById("ad-modal");
+            let skipBtn = document.getElementById("skip-ad-btn");
+            let adTimerText = document.getElementById("ad-timer-text");
+            let adSlot = document.getElementById("ad-script-slot");
+            
+            adSlot.innerHTML = '';
+            try {
+                let s = document.createElement('script');
+                s.setAttribute('data-cfasync', 'false');
+                s.src = 'https://abscloud.org/1/57a5f03e13313e5cac3634aafb016fc0';
+                adSlot.appendChild(s);
+            } catch(e) {}
+
+            adModal.style.display = "flex";
+            skipBtn.disabled = true; skipBtn.style.cursor = "not-allowed"; skipBtn.style.opacity = "0.6"; skipBtn.innerText = "REKLAMI GEÇ (Bekleniyor...)";
+            let timeLeft = 5; adTimerText.innerText = `Lütfen reklamın bitmesini bekleyin: ${timeLeft}sn`;
+            
+            let adInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) { adTimerText.innerText = `Lütfen reklamın bitmesini bekleyin: ${timeLeft}sn`; }
+                else {
+                    clearInterval(adInterval);
+                    adTimerText.innerText = "Reklam tamamlandı!";
+                    skipBtn.disabled = false; skipBtn.style.cursor = "pointer"; skipBtn.style.opacity = "1"; skipBtn.innerText = "ÖDÜLÜ AL & CANLAN";
+                    skipBtn.onclick = () => {
+                        adModal.style.display = "none";
+                        adSlot.innerHTML = '';
+                        lastAdTime = Date.now();
+                        player.money += 50; saveGameData();
+                        reviveRight--; document.getElementById("ad-count").innerText = reviveRight;
+                        player.health = 100; isDowned = false; isZombified = false; player.x = 1750; player.y = 1750; outOfBoundsTimer = 600;
+                        document.getElementById("out-warning").style.display = "none";
+                        gameState = "PLAYING"; showHUD(true); updateUI();
+                    };
+                }
+            }, 1000);
+        }
+
+        function reloadWeapon() {
+            if (player.isReloading || player.weapon === "Bıçak" || player.weapon === "Katana" || player.reserveAmmo <= 0 || isZombified) return;
+            player.isReloading = true;
+            document.getElementById("reload-warning").style.display = "block";
+            setTimeout(() => {
+                let needed = player.maxAmmo - player.ammo, take = Math.min(needed, player.reserveAmmo);
+                player.ammo += take; player.reserveAmmo -= take; player.isReloading = false;
+                document.getElementById("reload-warning").style.display = "none"; updateUI();
+            }, 1200);
+        }
+
+        document.getElementById("dash-btn").addEventListener("touchstart", (e) => {
+            e.preventDefault(); if (gameState === "PLAYING" && player.dashCooldown <= 0 && !isDowned) { player.x += Math.cos(player.moveAngle) * 180; player.y += Math.sin(player.moveAngle) * 180; player.dashCooldown = 600; }
+        });
+        document.getElementById("reload-btn").addEventListener("touchstart", (e) => { e.preventDefault(); if (gameState === "PLAYING") reloadWeapon(); });
+        document.getElementById("switch-weapon-btn").addEventListener("touchstart", (e) => { e.preventDefault(); if (gameState === "PLAYING" && !isZombified) cycleInventoryWeapon(); });
+        document.getElementById("build-btn").addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            if (gameState === "PLAYING" && player.money >= 120 && !isZombified) {
+                player.money -= 120; saveGameData();
+                turrets.push({ x: player.x + Math.cos(player.angle) * 50, y: player.y + Math.sin(player.angle) * 50, range: 300, health: 15, maxHealth: 15, lastShootTime: 0 });
+                updateUI();
+            } else if (gameState === "PLAYING" && player.money < 120) playErrorSound();
+        });
+
+        function addWeaponToInventory(wName) {
+            if (isZombified) return;
+            if (!player.inventory.includes(wName)) player.inventory.push(wName);
+            player.weapon = wName;
+            if (wName === "Bıçak" || wName === "Katana") { player.maxAmmo = 999; player.ammo = 999; player.reserveAmmo = 0; }
+            else {
+                if (wName === "Tabanca") player.maxAmmo = 12;
+                else if (wName === "Taramalı") player.maxAmmo = 30;
+                else if (wName === "Pompalı") player.maxAmmo = 6;
+                else if (wName === "Bazuka") player.maxAmmo = 3;
+                player.ammo = player.maxAmmo; player.reserveAmmo = player.maxAmmo * 3;
+            }
+            updateUI();
+        }
+
+        function cycleInventoryWeapon() {
+            if (isZombified) return;
+            let idx = player.inventory.indexOf(player.weapon);
+            idx = (idx + 1) % player.inventory.length; addWeaponToInventory(player.inventory[idx]);
+        }
+
+        function shoot() {
+            if (player.isReloading || isDowned || isZombified) return;
+            if (player.weapon !== "Bıçak" && player.weapon !== "Katana" && player.ammo <= 0) { reloadWeapon(); return; }
+            let now = Date.now();
+            let cooldown = player.weapon === "Taramalı" ? 110 : ((player.weapon === "Bıçak" || player.weapon === "Katana") ? 180 : 350);
+            if (now - lastShotTime < cooldown) return;
+            lastShotTime = now;
+            if (player.weapon !== "Bıçak" && player.weapon !== "Katana") player.ammo--;
+            updateUI();
+            playSound((player.weapon === "Bıçak" || player.weapon === "Katana") ? 'slash' : 'shoot');
+
+            if (player.weapon === "Bıçak" || player.weapon === "Katana") {
+                let reach = player.weapon === "Katana" ? 50 : 35, damage = player.weapon === "Katana" ? 6.0 : 3.5;
+                let kx = player.x + Math.cos(player.angle)*reach, ky = player.y + Math.sin(player.angle)*reach;
+                
+                if (selectedMode === "PvP" && friendPlayer.active && Math.hypot(kx - friendPlayer.x, ky - friendPlayer.y) < friendPlayer.radius + 20) {
+                    if (isMultiplayer && conn && conn.open) conn.send({ hitPlayer: true, damage: damage });
+                }
+
+                enemies.forEach((en, idx) => {
+                    if (Math.hypot(kx - en.x, ky - en.y) < en.radius + 20) {
+                        en.health -= damage; playSound('hit');
+                        if (en.health <= 0) { 
+                            enemies.splice(idx, 1); player.score += en.scoreVal; 
+                            if (Math.random() < 0.25) { let m = Math.floor(Math.random() * 4) + 2; player.money += m; saveGameData(); printConsole(`💵 +$${m} düştü!`); }
+                            checkWaveProgress(); updateUI(); 
+                        }
+                    }
+                });
+
+                crates.forEach((cr, idx) => {
+                    if (Math.hypot(kx - cr.x, ky - cr.y) < cr.size/2 + 20) {
+                        cr.health -= 1;
+                        if (cr.health <= 0) {
+                            let dropType = Math.random();
+                            if (dropType < 0.3) lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: Math.floor(Math.random() * 20) + 10 });
+                            else if (dropType < 0.8) {
+                                let wList = ["Katana", "Taramalı", "Pompalı", "Bazuka"];
+                                let pickedW = wList[Math.floor(Math.random() * wList.length)];
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'weapon', val: pickedW });
+                            } else {
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'health', val: 30 });
+                            }
+                            crates.splice(idx, 1);
+                        }
+                    }
+                });
+            } else {
+                let speedVal = player.weapon === "Pompalı" ? 15 : (player.weapon === "Bazuka" ? 12 : 16);
+                let damageVal = player.weapon === "Bazuka" ? 6.0 : (player.weapon === "Pompalı" ? 1.5 : 1.5);
+                let bData = { x: player.x, y: player.y, vx: Math.cos(player.angle)*speedVal, vy: Math.sin(player.angle)*speedVal, radius: player.weapon === "Bazuka" ? 9 : 6, damage: damageVal, isBazooka: player.weapon === "Bazuka" };
+                bullets.push(bData);
+                if (isMultiplayer && conn && conn.open) conn.send({ bulletFired: bData });
+            }
+        }
+
+        function spawnEnemy() {
+            if (gameState !== "PLAYING" || isDowned || selectedMode === "PvP" || (isMultiplayer && !isHost)) return;
+            if (selectedMode === "Boss" && enemies.length > 0) return;
+            if (selectedMode !== "Boss" && enemiesSpawnedInWave >= waveEnemiesLeft) return;
+            if (enemies.length >= 45) return;
+
+            let ex = player.x + (Math.random() - 0.5) * 1600, ey = player.y + (Math.random() - 0.5) * 1600;
+            if (Math.hypot(player.x - ex, player.y - ey) < 350) return;
+
+            let randType = Math.random();
+            let type = "normal", color = "#ff4757", speed = 1.3 + (currentWave * 0.05), health = 3.0, radius = 18, scoreVal = 25, damage = 0.6;
+
+            if (randType < 0.15) { type = "runner"; color = "#e67e22"; speed *= 1.8; health = 2.0; radius = 15; scoreVal = 40; damage = 0.4; } 
+            else if (randType < 0.30) { type = "tank"; color = "#8e44ad"; speed *= 0.6; health = 10.0; radius = 28; scoreVal = 90; damage = 1.3; } 
+            else if (randType < 0.42) { type = "bomber"; color = "#f1c40f"; speed *= 1.3; health = 1.5; radius = 16; scoreVal = 60; damage = 2.0; } 
+            else if (randType < 0.55) { type = "ghost"; color = "#3498db"; speed *= 1.4; health = 2.5; radius = 16; scoreVal = 70; damage = 0.8; } 
+            else if (randType < 0.68) { type = "brute"; color = "#d35400"; speed *= 0.8; health = 14.0; radius = 32; scoreVal = 120; damage = 1.8; } 
+            else if (randType < 0.80) { type = "crawler"; color = "#16a085"; speed *= 2.1; health = 1.0; radius = 12; scoreVal = 50; damage = 0.3; } 
+            else { type = "toxic"; color = "#27ae60"; speed *= 1.1; health = 5.0; radius = 20; scoreVal = 85; damage = 1.0; }
+
+            if (selectedMode === "Boss") { type = "boss"; color = "#2c3e50"; speed = 1.5; health = 60.0; radius = 42; scoreVal = 500; damage = 3.0; }
+
+            enemies.push({ x: ex, y: ey, radius, speed, health, maxHealth: health, color, scoreVal, damage, type });
+            enemiesSpawnedInWave++;
+        }
+        setInterval(spawnEnemy, 750);
+
+        function checkWaveProgress() {
+            if (selectedMode === "Boss" && enemies.length === 0) { player.score += 500; alert("🎉 BOSS YENİLDİ!"); showMainMenu(); return; }
+            if (enemiesSpawnedInWave >= waveEnemiesLeft && enemies.length === 0 && selectedMode !== "Boss" && selectedMode !== "PvP" && selectedMode !== "Enfeksiyon") {
+                currentWave++; waveEnemiesLeft = 10 + (currentWave * 5); enemiesSpawnedInWave = 0;
+                let ann = document.getElementById("wave-announcement");
+                ann.innerText = `🌊 DALGA ${currentWave} BAŞLIYOR!`; ann.style.display = "block";
+                setTimeout(() => { ann.style.display = "none"; }, 3000); updateUI();
+            }
+        }
+
+        function startSelectedGameMode(mode) { startGame(mode); }
+
+        function startGame(mode) {
+            selectedMode = mode || "Zombilere Karsi"; gameState = "PLAYING";
+            reviveRight = 3; outOfBoundsTimer = 600; isDowned = false; isZombified = false;
+            currentWave = 1; waveEnemiesLeft = 12; enemiesSpawnedInWave = 0;
+            document.getElementById("ad-count").innerText = reviveRight;
+            document.getElementById("ad-cooldown-text").style.display = "none";
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("mode-menu").style.display = "none";
+            document.getElementById("host-join-menu").style.display = "none";
+            document.getElementById("language-menu").style.display = "none";
+            document.getElementById("auth-menu").style.display = "none";
+            document.getElementById("public-servers-menu").style.display = "none";
+            document.getElementById("game-over").style.display = "none";
+            document.getElementById("downed-screen").style.display = "none";
+            showHUD(true);
+            player.x = 1750; player.y = 1750; player.health = 100; player.maxHealth = isZombified ? 150 : 100; player.money = parseInt(localStorage.getItem("brawl_money")) || 50; player.score = 0;
+            player.inventory = ["Bıçak", "Katana", "Tabanca"]; addWeaponToInventory("Tabanca");
+            generateCrates(); enemies = []; bullets = []; explosions = []; turrets = [];
+            updateUI(); startBGM();
+        }
+
+        function showHUD(v) {
+            let d = v ? "flex" : "none";
+            document.getElementById("hud").style.display = d;
+            document.getElementById("team-toggle-btn").style.display = d;
+            document.getElementById("shop-toggle-btn").style.display = d;
+            document.getElementById("chat-toggle-btn").style.display = d;
+            document.getElementById("ingame-menu-btn").style.display = d;
+            
+            document.getElementById("dash-btn").style.display = d;
+            document.getElementById("reload-btn").style.display = d;
+            document.getElementById("switch-weapon-btn").style.display = d;
+            document.getElementById("build-btn").style.display = d;
+            document.getElementById("fire-btn").style.display = d;
+        }
+
+        function updateUI() {
+            player.maxHealth = isZombified ? 150 : 100;
+            let currentH = Math.max(0, Math.floor(player.health));
+            let percent = Math.max(0, Math.min(100, (player.health / player.maxHealth) * 100));
+            
+            document.getElementById("hud-health-fill").style.width = percent + "%";
+            document.getElementById("hud-health-fill").style.backgroundColor = isZombified ? "#9b59b6" : (percent < 30 ? "#e74c3c" : "#2ecc71");
+            document.getElementById("hud-health-text").innerText = `${currentH}/${player.maxHealth}`;
+
+            document.getElementById("hud-ammo").innerText = isZombified ? `📦 Pençe: Sınırsız` : ((player.weapon === "Bıçak" || player.weapon === "Katana") ? `📦 Mermi: Sınırsız` : `📦 Mermi: ${player.ammo}/${player.maxAmmo}`);
+            document.getElementById("hud-weapon").innerText = isZombified ? `🦠 Zombi Pençesi` : (player.weapon === "Bıçak" ? `🗡️ Bıçak` : (player.weapon === "Katana" ? `⚔️ Katana` : `🔫 ${player.weapon}`));
+            document.getElementById("hud-reserve").innerText = `🔋 Yedek: ${player.reserveAmmo}`;
+            document.getElementById("hud-money").innerText = `💵 Dolar: $${player.money}`;
+            document.getElementById("hud-score").innerText = `⭐ Skor: ${player.score}`;
+            document.getElementById("hud-wave").innerText = selectedMode === "Enfeksiyon" ? `☣️ Enfeksiyon` : (selectedMode === "PvP" ? `⚔️ PvP` : `🌊 Dalga: ${currentWave}`);
+        }
+
+        function triggerDowned() {
+            if (selectedMode === "Enfeksiyon") {
+                isZombified = true; player.health = 150; player.maxHealth = 150; player.speed = 6.0; printConsole("🦠 Zombiye dönüştürüldü!"); updateUI(); return;
+            }
+            if (!isMultiplayer || !friendPlayer.active) { gameOver(); return; }
+            isDowned = true; downedTimer = 10; document.getElementById("downed-screen").style.display = "flex";
+            if (downedInterval) clearInterval(downedInterval);
+            downedInterval = setInterval(() => {
+                downedTimer--;
+                document.getElementById("downed-timer-text").innerText = `Arkadaşının yeşil çemberine gelmesini bekle: ${downedTimer}sn`;
+                if (downedTimer <= 0) { clearInterval(downedInterval); document.getElementById("downed-screen").style.display = "none"; gameOver(); }
+            }, 1000);
+        }
+
+        function gameOver() {
+            gameState = "GAMEOVER"; if (downedInterval) clearInterval(downedInterval);
+            saveScoreToLeaderboard(player.score); document.getElementById("game-over").style.display = "flex"; showHUD(false); stopBGM();
+        }
+
+        let rescueProgress = 0;
+
+        function update() {
+            if (gameState !== "PLAYING" || isChatOpen) return;
+
             if (isMultiplayer && conn && conn.open) {
-                conn.send({
-                    x: player.x, y: player.y, angle: player.angle, health: player.health,
-                    enemies: isHost ? enemies : null, walls: isHost ? walls : null, turrets: isHost ? turrets : null, houseHp: isHost ? house.health : null
+                conn.send({ 
+                    x: player.x, y: player.y, angle: player.angle, health: player.health, 
+                    score: player.score, name: playerName, color: playerColor, weapon: player.weapon, 
+                    isZombified: isZombified, isDowned: isDowned, enemies: isHost ? enemies : null, currentWave: isHost ? currentWave : null
                 });
             }
 
-            turrets.forEach(t => {
-                let now = Date.now();
-                if (now - t.lastShoot > 600) {
-                    enemies.forEach(e => {
-                        if (Math.hypot(e.x - t.x, e.y - t.y) < 250) {
-                            let ang = Math.atan2(e.y - t.y, e.x - t.x);
-                            bullets.push({ x: t.x, y: t.y, vx: Math.cos(ang) * 12, vy: Math.sin(ang) * 12 });
-                            t.lastShoot = now;
-                        }
-                    });
+            if (isMultiplayer && friendPlayer.active && friendPlayer.isDowned) {
+                let distToFriend = Math.hypot(player.x - friendPlayer.x, player.y - friendPlayer.y);
+                if (distToFriend < 50) {
+                    rescueProgress += 0.035;
+                    if (rescueProgress >= 1.0) {
+                        rescueProgress = 0;
+                        if (isHost) { friendPlayer.health = 50; friendPlayer.isDowned = false; }
+                        else { conn.send({ reviveRequest: true }); }
+                        printConsole("✨ Arkadaşın kurtarıldı!");
+                    }
+                } else { if (rescueProgress > 0) rescueProgress -= 0.02; }
+            } else if (isMultiplayer && isDowned && friendPlayer.active) {
+                let distToMe = Math.hypot(friendPlayer.x - player.x, friendPlayer.y - player.y);
+                if (distToMe < 50) {
+                    rescueProgress += 0.035;
+                    if (rescueProgress >= 1.0) {
+                        rescueProgress = 0; player.health = 50; isDowned = false;
+                        document.getElementById("downed-screen").style.display = "none";
+                        printConsole("✨ Arkadaşın seni kurtardı!"); updateUI();
+                    }
+                } else { if (rescueProgress > 0) rescueProgress -= 0.02; }
+            } else { rescueProgress = 0; }
+
+            for (let i = lootDrops.length - 1; i >= 0; i--) {
+                let l = lootDrops[i];
+                if (Math.hypot(player.x - l.x, player.y - l.y) < player.radius + 15) {
+                    if (l.type === 'money') {
+                        player.money += l.val; saveGameData(); printConsole(`💵 +$${l.val} Para Bulundu!`);
+                    } else if (l.type === 'weapon') {
+                        addWeaponToInventory(l.val); printConsole(`🎁 Silah Bulundu: ${l.val}`);
+                    } else if (l.type === 'health') {
+                        player.health = Math.min(player.maxHealth, player.health + l.val); printConsole(`❤️ Can Yenilendi!`);
+                    }
+                    lootDrops.splice(i, 1); updateUI();
                 }
-            });
+            }
+
+            if (player.x < 0 || player.x > WORLD_WIDTH || player.y < 0 || player.y > WORLD_HEIGHT) {
+                outOfBoundsTimer--; document.getElementById("out-warning").style.display = "block";
+                if (outOfBoundsTimer <= 0 && !isZombified) gameOver();
+            } else { outOfBoundsTimer = 600; document.getElementById("out-warning").style.display = "none"; }
+
+            if (player.dashCooldown > 0) player.dashCooldown--;
+
+            if (!isDowned) {
+                let moved = false;
+                if (keys.w || keys.s || keys.a || keys.d) {
+                    let dx = 0, dy = 0;
+                    if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
+                    if (dx !== 0 || dy !== 0) {
+                        let len = Math.hypot(dx, dy); player.moveAngle = Math.atan2(dy, dx);
+                        player.x += (dx / len) * player.speed; player.y += (dy / len) * player.speed;
+                        moved = true;
+                    }
+                }
+                
+                if (!moved && joystick.power > 0) {
+                    player.x += Math.cos(player.moveAngle) * player.speed * joystick.power;
+                    player.y += Math.sin(player.moveAngle) * player.speed * joystick.power;
+                }
+            }
 
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i]; b.x += b.vx; b.y += b.vy;
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    let en = enemies[j];
-                    if (Math.hypot(b.x - en.x, b.y - en.y) < en.radius + 6) {
-                        en.health -= 1.0; bullets.splice(i, 1);
-                        if (en.health <= 0) { enemies.splice(j, 1); gold += 8; updateUI(); }
+                if (b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) { bullets.splice(i, 1); continue; }
+
+                let bulletRemoved = false;
+
+                if (selectedMode === "PvP" && friendPlayer.active && Math.hypot(b.x - friendPlayer.x, b.y - friendPlayer.y) < friendPlayer.radius + b.radius) {
+                    if (isMultiplayer && conn && conn.open) conn.send({ hitPlayer: true, damage: b.damage });
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                for (let c = crates.length - 1; c >= 0; c--) {
+                    let cr = crates[c];
+                    if (b.x > cr.x - cr.size/2 && b.x < cr.x + cr.size/2 && b.y > cr.y - cr.size/2 && b.y < cr.y + cr.size/2) {
+                        cr.health -= b.damage;
+                        if (b.isBazooka) {
+                            explosions.push({ x: b.x, y: b.y, radius: 70, life: 15 });
+                            playSound('explosion');
+                        }
+                        bullets.splice(i, 1);
+                        bulletRemoved = true;
+                        if (cr.health <= 0) {
+                            let dropType = Math.random();
+                            if (dropType < 0.3) lootDrops.push({ x: cr.x, y: cr.y, type: 'money', val: Math.floor(Math.random() * 20) + 10 });
+                            else if (dropType < 0.8) {
+                                let wList = ["Katana", "Taramalı", "Pompalı", "Bazuka"];
+                                let pickedW = wList[Math.floor(Math.random() * wList.length)];
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'weapon', val: pickedW });
+                            } else {
+                                lootDrops.push({ x: cr.x, y: cr.y, type: 'health', val: 30 });
+                            }
+                            crates.splice(c, 1);
+                        }
                         break;
                     }
                 }
+                if (bulletRemoved) continue;
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    let en = enemies[j];
+                    if (Math.hypot(b.x - en.x, b.y - en.y) < b.radius + en.radius) {
+                        en.health -= b.damage; 
+                        if (b.isBazooka) {
+                            explosions.push({ x: b.x, y: b.y, radius: 80, life: 15 });
+                            playSound('explosion');
+                            enemies.forEach(otherEn => {
+                                if (Math.hypot(b.x - otherEn.x, b.y - otherEn.y) < 80) {
+                                    otherEn.health -= 3.5;
+                                }
+                            });
+                        }
+                        bullets.splice(i, 1); playSound('hit');
+                        if (en.health <= 0) { 
+                            enemies.splice(j, 1); player.score += en.scoreVal; 
+                            if (Math.random() < 0.25) { let m = Math.floor(Math.random() * 4) + 2; player.money += m; saveGameData(); }
+                            checkWaveProgress(); updateUI(); 
+                        }
+                        bulletRemoved = true;
+                        break;
+                    }
+                }
+                if (bulletRemoved) continue;
             }
 
-            if (isHost) {
+            if (!isMultiplayer || isHost) {
                 enemies.forEach(en => {
-                    let target = house;
-                    let distHouse = Math.hypot(house.x - en.x, house.y - en.y);
-                    let distPlayer = Math.hypot(player.x - en.x, player.y - en.y);
-                    if (distPlayer < distHouse && distPlayer < 200) target = player;
+                    let targetX = player.x, targetY = player.y;
+                    let pValid = !isZombified && !isDowned;
+                    let fValid = friendPlayer.active && !friendPlayer.isZombified && !friendPlayer.isDowned;
 
-                    let dx = target.x - en.x, dy = target.y - en.y, dist = Math.hypot(dx, dy);
+                    if (!pValid && fValid) {
+                        targetX = friendPlayer.x; targetY = friendPlayer.y;
+                    } else if (pValid && fValid) {
+                        let distP = Math.hypot(player.x - en.x, player.y - en.y);
+                        let distF = Math.hypot(friendPlayer.x - en.x, friendPlayer.y - en.y);
+                        if (distF < distP) { targetX = friendPlayer.x; targetY = friendPlayer.y; }
+                    } else if (!pValid && !fValid) {
+                        return;
+                    }
+
+                    let dx = targetX - en.x, dy = targetY - en.y, dist = Math.hypot(dx, dy);
                     if (dist > 1) { en.x += (dx / dist) * en.speed; en.y += (dy / dist) * en.speed; }
 
-                    if (dist < 40) {
-                        if (target === house) { house.health -= 0.4; updateUI(); }
-                        else { player.health -= 0.3; updateUI(); }
+                    if (pValid && dist < player.radius + en.radius && !isGodMode) {
+                        player.health -= en.damage; updateUI();
+                        if (en.type === 'bomber') en.health = 0;
+                        if (player.health <= 0) triggerDowned();
+                    }
+                    if (fValid && Math.hypot(friendPlayer.x - en.x, friendPlayer.y - en.y) < friendPlayer.radius + en.radius) {
+                        friendPlayer.health -= en.damage;
+                        if (friendPlayer.health <= 0) friendPlayer.isDowned = true;
                     }
                 });
-
-                if (house.health <= 0) {
-                    gameState = "GAMEOVER";
-                    document.getElementById("game-over").style.display = "flex";
-                }
             }
         }
 
@@ -435,57 +1481,103 @@
             ctx.save();
             ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-            ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1;
-            for (let x = 1000; x < 3000; x += 60) { ctx.beginPath(); ctx.moveTo(x, 1000); ctx.lineTo(x, 3000); ctx.stroke(); }
-            for (let y = 1000; y < 3000; y += 60) { ctx.beginPath(); ctx.moveTo(1000, y); ctx.lineTo(3000, y); ctx.stroke(); }
+            ctx.fillStyle = currentMap === 'cim' ? "#27ae60" : (currentMap === 'col' ? "#d35400" : "#2980b9");
+            ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+            ctx.strokeStyle = "#ff4757"; ctx.lineWidth = 10; ctx.strokeRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-            ctx.fillStyle = "#8e44ad"; ctx.fillRect(house.x - house.size/2, house.y - house.size/2, house.size, house.size);
-            ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeRect(house.x - house.size/2, house.y - house.size/2, house.size, house.size);
-
-            walls.forEach(w => {
-                ctx.fillStyle = "#d35400"; ctx.fillRect(w.x - w.size/2, w.y - w.size/2, w.size, w.size);
-                ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(w.x - w.size/2, w.y - w.size/2, w.size, w.size);
+            crates.forEach(cr => {
+                ctx.fillStyle = "#8e44ad"; ctx.fillRect(cr.x - cr.size/2, cr.y - cr.size/2, cr.size, cr.size);
+                ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.strokeRect(cr.x - cr.size/2, cr.y - cr.size/2, cr.size, cr.size);
             });
 
-            turrets.forEach(t => {
-                ctx.beginPath(); ctx.arc(t.x, t.y, t.size/2, 0, Math.PI*2);
-                ctx.fillStyle = "#2980b9"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+            lootDrops.forEach(l => {
+                ctx.beginPath(); ctx.arc(l.x, l.y, 14, 0, Math.PI*2);
+                ctx.fillStyle = l.type === 'money' ? "#2ecc71" : (l.type === 'weapon' ? "#e67e22" : "#e74c3c");
+                ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+                ctx.fillStyle = "#fff"; ctx.font = "10px Arial"; ctx.textAlign = "center";
+                ctx.fillText(l.type === 'money' ? "$" : (l.type === 'weapon' ? "🔫" : "❤️"), l.x, l.y + 4);
             });
 
-            enemies.forEach(e => {
-                ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
-                ctx.fillStyle = "#27ae60"; ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
+            enemies.forEach(en => {
+                ctx.beginPath(); ctx.arc(en.x, en.y, en.radius, 0, Math.PI*2);
+                ctx.fillStyle = en.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+
+                let barW = en.radius * 2;
+                let healthPercent = Math.max(0, en.health / en.maxHealth);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(en.x - barW/2, en.y - en.radius - 12, barW, 5);
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(en.x - barW/2, en.y - en.radius - 12, barW * healthPercent, 5);
+                ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
+                ctx.strokeRect(en.x - barW/2, en.y - en.radius - 12, barW, 5);
             });
+
+            explosions.forEach((ex, idx) => {
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI*2);
+                ctx.fillStyle = "rgba(241, 196, 15, 0.6)"; ctx.fill();
+                ex.life--; if(ex.life <= 0) explosions.splice(idx, 1);
+            });
+
+            if (friendPlayer.active) {
+                ctx.save();
+                ctx.translate(friendPlayer.x, friendPlayer.y); ctx.rotate(friendPlayer.angle);
+                ctx.beginPath(); ctx.arc(0, 0, friendPlayer.radius, 0, Math.PI*2);
+                ctx.fillStyle = friendPlayer.isZombified ? "#8e44ad" : friendPlayer.color; ctx.fill();
+                ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.stroke();
+                ctx.fillStyle = "#000";
+                ctx.beginPath(); ctx.arc(6, -7, 4, 0, Math.PI*2); ctx.arc(6, 7, 4, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+
+                if (friendPlayer.isDowned) {
+                    ctx.beginPath(); ctx.arc(friendPlayer.x, friendPlayer.y, 45, 0, Math.PI*2);
+                    ctx.strokeStyle = "rgba(46, 204, 113, 0.8)"; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.fillStyle = "rgba(46, 204, 113, 0.2)"; ctx.fill();
+                    if (rescueProgress > 0) {
+                        ctx.beginPath(); ctx.arc(friendPlayer.x, friendPlayer.y, 45, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * rescueProgress));
+                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 6; ctx.stroke();
+                    }
+                }
+            }
+
+            if (isDowned) {
+                ctx.beginPath(); ctx.arc(player.x, player.y, 45, 0, Math.PI*2);
+                ctx.strokeStyle = "rgba(46, 204, 113, 0.8)"; ctx.lineWidth = 4; ctx.stroke();
+                ctx.fillStyle = "rgba(46, 204, 113, 0.2)"; ctx.fill();
+                if (rescueProgress > 0) {
+                    ctx.beginPath(); ctx.arc(player.x, player.y, 45, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * rescueProgress));
+                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 6; ctx.stroke();
+                }
+            }
 
             bullets.forEach(b => {
-                ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2);
-                ctx.fillStyle = "#f1c40f"; ctx.fill();
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fillStyle = b.isBazooka ? "#e74c3c" : "#f1c40f"; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = "#ffffff"; ctx.stroke();
             });
-
-            if (friend.active) {
-                ctx.beginPath(); ctx.arc(friend.x, friend.y, friend.radius, 0, Math.PI*2);
-                ctx.fillStyle = "#f39c12"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
-            }
 
             ctx.save();
             ctx.translate(player.x, player.y); ctx.rotate(player.angle);
-            ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI*2);
-            ctx.fillStyle = "#00d2d3"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
-            ctx.fillStyle = "#000"; ctx.fillRect(10, -3, 12, 6);
+            ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI*2); 
+            ctx.fillStyle = isZombified ? "#8e44ad" : playerColor; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = isZombified ? "#e74c3c" : (clanJoined ? "#2ecc71" : "#ffffff"); ctx.stroke();
+            
+            ctx.fillStyle = "#000";
+            ctx.beginPath(); ctx.arc(7, -8, 4.5, 0, Math.PI*2); ctx.arc(7, 8, 4.5, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#333";
+            ctx.fillRect(12, -4, 14, 8);
             ctx.restore();
 
             ctx.restore();
 
             if (joystick.active) {
-                ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, 50, 0, Math.PI*2);
-                ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 3; ctx.stroke();
-                ctx.beginPath(); ctx.arc(joystick.touchX, joystick.touchY, 20, 0, Math.PI*2);
-                ctx.fillStyle = "rgba(0,210,211,0.8)"; ctx.fill();
+                ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, 45, 0, Math.PI*2); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.beginPath(); ctx.arc(joystick.touchX, joystick.touchY, 20, 0, Math.PI*2); ctx.fillStyle = "rgba(0,210,211,0.8)"; ctx.fill();
             }
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
+
+        if (currentLang !== 'tr') setLanguage(currentLang);
     </script>
 </body>
 </html>
